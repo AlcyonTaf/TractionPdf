@@ -137,7 +137,8 @@ class App(tk.Tk):
         self.grid_columnconfigure(0, weight=1)
 
         # MainApplication(self).pack(side="top", fill="both", expand=True)
-        MainApplication(self).grid(row=0, column=0, sticky='nswe')
+        self.main_application = MainApplication(self)
+        self.main_application.grid(row=0, column=0, sticky='nswe')
         # OtherFrame(self).pack(side="bottom")
 
 
