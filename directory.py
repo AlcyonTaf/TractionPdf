@@ -1,5 +1,18 @@
 import os
-path = os.getcwd()
-print(path+'\Suivi')
-os.chdir(path+'\Suivi')
-print ([name for name in os.listdir(".") if os.path.isdir(name)])
+from configparser import ConfigParser
+
+config = ConfigParser()
+
+config.read('config.ini')
+# path = os.getcwd()
+# print(path+'\Suivi')
+# os.chdir(config.get('ResultsFolder', 'SuiviPath'))
+# print([name for name in os.listdir(".") if os.path.isdir(name)])
+
+
+def get_result_date_list():
+    os.chdir(config.get('ResultsFolder', 'SuiviPath'))
+    list = [name for name in os.listdir(".") if os.path.isdir(name)]
+
+    return list
+

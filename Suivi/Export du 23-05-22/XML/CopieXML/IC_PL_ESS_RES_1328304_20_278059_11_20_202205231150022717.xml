@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<__Essais>
+  <__Essai>
+    <Source>PS-TR-MF600</Source>
+    <TimeStamp>202205231150022717</TimeStamp>
+    <NoCommande>1328304</NoCommande>
+    <NoPoste>20</NoPoste>
+    <SapOf />
+    <Batch>278059.11</Batch>
+    <NumPlaque>
+    </NumPlaque>
+    <NumPlaqueMQ>
+    </NumPlaqueMQ>
+    <StatutPlaque>
+    </StatutPlaque>
+    <DateStatutPlaque>
+    </DateStatutPlaque>
+    <RemStatPlaque />
+    <SequenceLoc>20</SequenceLoc>
+    <Eprouvettes>
+      <Eprouvette>
+        <SeqEssais>40</SeqEssais>
+        <TypeEssai>
+        </TypeEssai>
+        <Temperature>
+        </Temperature>
+        <UnitTemp>
+        </UnitTemp>
+        <EtatRef>
+        </EtatRef>
+        <StatutEpr>
+        </StatutEpr>
+        <DateStatutEpr>
+        </DateStatutEpr>
+        <RemStatEpr />
+        <TTHs>
+        </TTHs>
+        <Parametres>
+          <Parametre>
+            <NumPara>990</NumPara>
+            <UnitPara />
+            <ValuePara>
+            </ValuePara>
+            <ValueParaT>1</ValueParaT>
+            <SequenceResult>1</SequenceResult>
+            <SequenceEssEpr>1</SequenceEssEpr>
+          </Parametre>
+          <Parametre>
+            <NumPara>561</NumPara>
+            <UnitPara />
+            <ValuePara>
+            </ValuePara>
+            <ValueParaT>20220523110300</ValueParaT>
+            <SequenceResult>1</SequenceResult>
+            <SequenceEssEpr>1</SequenceEssEpr>
+          </Parametre>
+          <Parametre>
+            <NumPara>560</NumPara>
+            <UnitPara />
+            <ValuePara>
+            </ValuePara>
+            <ValueParaT>ZACHARSKI_M</ValueParaT>
+            <SequenceResult>1</SequenceResult>
+            <SequenceEssEpr>1</SequenceEssEpr>
+          </Parametre>
+          <Parametre>
+            <NumPara>2</NumPara>
+            <UnitPara />
+            <ValuePara>732</ValuePara>
+            <ValueParaT>
+            </ValueParaT>
+            <SequenceResult>1</SequenceResult>
+            <SequenceEssEpr>1</SequenceEssEpr>
+          </Parametre>
+          <Parametre>
+            <NumPara>3</NumPara>
+            <UnitPara />
+            <ValuePara>  0</ValuePara>
+            <ValueParaT>
+            </ValueParaT>
+            <SequenceResult>1</SequenceResult>
+            <SequenceEssEpr>1</SequenceEssEpr>
+          </Parametre>
+          <Parametre>
+            <NumPara>20</NumPara>
+            <UnitPara />
+            <ValuePara>819</ValuePara>
+            <ValueParaT>
+            </ValueParaT>
+            <SequenceResult>1</SequenceResult>
+            <SequenceEssEpr>1</SequenceEssEpr>
+          </Parametre>
+          <Parametre>
+            <NumPara>4</NumPara>
+            <UnitPara />
+            <ValuePara>  0</ValuePara>
+            <ValueParaT>
+            </ValueParaT>
+            <SequenceResult>1</SequenceResult>
+            <SequenceEssEpr>1</SequenceEssEpr>
+          </Parametre>
+          <Parametre>
+            <NumPara>5</NumPara>
+            <UnitPara />
+            <ValuePara>738</ValuePara>
+            <ValueParaT>
+            </ValueParaT>
+            <SequenceResult>1</SequenceResult>
+            <SequenceEssEpr>1</SequenceEssEpr>
+          </Parametre>
+          <Parametre>
+            <NumPara>10</NumPara>
+            <UnitPara />
+            <ValuePara>742</ValuePara>
+            <ValueParaT>
+            </ValueParaT>
+            <SequenceResult>1</SequenceResult>
+            <SequenceEssEpr>1</SequenceEssEpr>
+          </Parametre>
+          <Parametre>
+            <NumPara>11</NumPara>
+            <UnitPara />
+            <ValuePara>725</ValuePara>
+            <ValueParaT>
+            </ValueParaT>
+            <SequenceResult>1</SequenceResult>
+            <SequenceEssEpr>1</SequenceEssEpr>
+          </Parametre>
+          <Parametre>
+            <NumPara>17</NumPara>
+            <UnitPara />
+            <ValuePara>192895</ValuePara>
+            <ValueParaT>
+            </ValueParaT>
+            <SequenceResult>1</SequenceResult>
+            <SequenceEssEpr>1</SequenceEssEpr>
+          </Parametre>
+          <Parametre>
+            <NumPara>45</NumPara>
+            <UnitPara />
+            <ValuePara> 20</ValuePara>
+            <ValueParaT>
+            </ValueParaT>
+            <SequenceResult>1</SequenceResult>
+            <SequenceEssEpr>1</SequenceEssEpr>
+          </Parametre>
+          <Parametre>
+            <NumPara>50</NumPara>
+            <UnitPara />
+            <ValuePara> 20</ValuePara>
+            <ValueParaT>
+            </ValueParaT>
+            <SequenceResult>1</SequenceResult>
+            <SequenceEssEpr>1</SequenceEssEpr>
+          </Parametre>
+          <Parametre>
+            <NumPara>51</NumPara>
+            <UnitPara />
+            <ValuePara> 20</ValuePara>
+            <ValueParaT>
+            </ValueParaT>
+            <SequenceResult>1</SequenceResult>
+            <SequenceEssEpr>1</SequenceEssEpr>
+          </Parametre>
+          <Parametre>
+            <NumPara>52</NumPara>
+            <UnitPara />
+            <ValuePara> 20</ValuePara>
+            <ValueParaT>
+            </ValueParaT>
+            <SequenceResult>1</SequenceResult>
+            <SequenceEssEpr>1</SequenceEssEpr>
+          </Parametre>
+          <Parametre>
+            <NumPara>53</NumPara>
+            <UnitPara />
+            <ValuePara> 20</ValuePara>
+            <ValueParaT>
+            </ValueParaT>
+            <SequenceResult>1</SequenceResult>
+            <SequenceEssEpr>1</SequenceEssEpr>
+          </Parametre>
+          <Parametre>
+            <NumPara>54</NumPara>
+            <UnitPara />
+            <ValuePara> 20</ValuePara>
+            <ValueParaT>
+            </ValueParaT>
+            <SequenceResult>1</SequenceResult>
+            <SequenceEssEpr>1</SequenceEssEpr>
+          </Parametre>
+          <Parametre>
+            <NumPara>122</NumPara>
+            <UnitPara />
+            <ValuePara> 20</ValuePara>
+            <ValueParaT>
+            </ValueParaT>
+            <SequenceResult>1</SequenceResult>
+            <SequenceEssEpr>1</SequenceEssEpr>
+          </Parametre>
+          <Parametre>
+            <NumPara>1992</NumPara>
+            <UnitPara />
+            <ValuePara> 20</ValuePara>
+            <ValueParaT>
+            </ValueParaT>
+            <SequenceResult>1</SequenceResult>
+            <SequenceEssEpr>1</SequenceEssEpr>
+          </Parametre>
+          <Parametre>
+            <NumPara>60</NumPara>
+            <UnitPara />
+            <ValuePara>  0</ValuePara>
+            <ValueParaT>
+            </ValueParaT>
+            <SequenceResult>1</SequenceResult>
+            <SequenceEssEpr>1</SequenceEssEpr>
+          </Parametre>
+          <Parametre>
+            <NumPara>61</NumPara>
+            <UnitPara />
+            <ValuePara>  0</ValuePara>
+            <ValueParaT>
+            </ValueParaT>
+            <SequenceResult>1</SequenceResult>
+            <SequenceEssEpr>1</SequenceEssEpr>
+          </Parametre>
+        </Parametres>
+      </Eprouvette>
+    </Eprouvettes>
+    <OperationCode />
+    <OperationUser />
+    <OperationDate />
+    <OperationTime />
+  </__Essai>
+</__Essais>
