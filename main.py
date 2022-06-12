@@ -85,6 +85,8 @@ class TestResultList(tk.Frame):
         # callback du dropdown => pas utile au final car on utilise command=
         # self.folderlist.trace("w", self.callback_dropdown_export)
 
+        # Todo : Ajouter un bouton pour actualiser ?
+
         #Création d'un menu popup lors du clic droit
         self.popup_menu = tk.Menu(self, tearoff=0)
         self.popup_menu.add_command(label="Envoyer annexe", command=self.popup_menu_send_pdf)
@@ -131,12 +133,12 @@ class TestResultList(tk.Frame):
             # Todo : Voir pour afficher le nom du fichier correctement et non coupé
             details_text.insert('end', '\n' + str(self.frame.iloc[idx, 6:-1]))
 
-    def item_selected(self, event):
-        for selected_item in self.tree.selection():
-            item = self.tree.item(selected_item)
-            record = item['values']
-            # show a message
-            showinfo(title='Information', message=','.join(record))
+    # def item_selected(self, event):
+    #     for selected_item in self.tree.selection():
+    #         item = self.tree.item(selected_item)
+    #         record = item['values']
+    #         # show a message
+    #         showinfo(title='Information', message=','.join(record))
 
     def get_result_date_list(self):
         # TODO : ne garder que la date
