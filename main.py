@@ -3,7 +3,7 @@ import tkinter as tk
 import os
 import glob
 import pandas as pd
-from tkinter import ttk, Text, OptionMenu, StringVar
+from tkinter import ttk, Text, OptionMenu, StringVar, filedialog as fd
 from tkinter.messagebox import showinfo
 from configparser import ConfigParser
 
@@ -65,8 +65,10 @@ class TestResultList(tk.Frame):
 
         self.tree.grid(row=1, column=0, sticky='nesw')
 
-        # Treeview event double click => Pour affichage des info dans détails
-        self.tree.bind("<Double-1>", self.on_double_click)
+        # Treeview event click => Pour affichage des info dans détails
+        self.tree.bind("<<TreeviewSelect>>", self.on_select)
+        # Treeview event click droit => pour affichage popup menu
+        self.tree.bind("<Button-3>", self.show_popup_menu)
 
         # add a scrollbar
         self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
@@ -82,20 +84,48 @@ class TestResultList(tk.Frame):
         # callback du dropdown => pas utile au final car on utilise command=
         # self.folderlist.trace("w", self.callback_dropdown_export)
 
-    def on_double_click(self, event):
+        #Création d'un menu popup lors du clic droit
+        self.popup_menu = tk.Menu(self, tearoff=0)
+        self.popup_menu.add_command(label="Envoyer annexe", command=self.popup_menu_send_pdf)
+        self.popup_menu.add_command(label="Supprimer le fichier", command=self.popup_menu_delete_file)
+
+    def popup_menu_send_pdf(self):
+        """ Fonction pour l'envoie des PDF """
+        # TODO : Voir si elle ne peut pas etre static
+        filename = fd.askopenfilename(title="Choix du PDF a transmettre a SAP", filetypes=[('PDF', '*.pdf')])
+        print(filename)
+
+        pass
+
+    def popup_menu_delete_file(self):
+        print(self.popup_menu.selection)
+        tk.messagebox.showinfo("Test", "test")
+
+    def show_popup_menu(self, event):
+        try:
+            item = self.tree.identify_row(event.y)
+            self.popup_menu.selection = self.tree.set(item)
+            self.tree.focus(item)
+            self.tree.selection_set(item)
+            self.popup_menu.post(event.x_root, event.y_root)
+        finally:
+            self.popup_menu.grab_release()
+
+    def on_select(self, event):
         # Todo : Prévoir le cas ou la treeview est vide
-        item = self.tree.selection()[0]
-        idx = self.tree.index(item)
-        print(item)
-        print(idx)
-        print(self.tree.item(item, "value"))
-        # On récupére tous les détails dans le df avec l'index
-        print(self.frame.iloc[[idx]])
-        # On complete détails
-        details_text = self.parent.details_text.text
-        details_text.delete('1.0', 'end')
-        # Todo : Voir pour afficher le nom du fichier correctement et non coupé
-        details_text.insert('end', '\n' + str(self.frame.iloc[idx, 6:-1]))
+        if len(self.tree.selection()) > 0:
+            item = self.tree.selection()[0]
+            idx = self.tree.index(item)
+            #print(item)
+            #print(idx)
+            #print(self.tree.item(item, "value"))
+            # On récupére tous les détails dans le df avec l'index
+            #print(self.frame.iloc[[idx]])
+            # On complete détails
+            details_text = self.parent.details_text.text
+            details_text.delete('1.0', 'end')
+            # Todo : Voir pour afficher le nom du fichier correctement et non coupé
+            details_text.insert('end', '\n' + str(self.frame.iloc[idx, 6:-1]))
 
     def item_selected(self, event):
         for selected_item in self.tree.selection():
@@ -107,8 +137,9 @@ class TestResultList(tk.Frame):
     def get_result_date_list(self):
         # TODO : ne garder que la date
         os.chdir(config.get('ResultsFolder', 'SuiviPath'))
-        resultlist = [name for name in os.listdir(".") if os.path.isdir(name)]
-        return resultlist
+        result_list = ["En attente export"]
+        result_list.extend([name for name in os.listdir(".") if os.path.isdir(name)])
+        return result_list
 
     def callback_dropdown_export(self, *args):
         # TODO : Mettre a jour la treeview avec la liste des fichiers de résultats du dossier sélectionner
@@ -120,14 +151,20 @@ class TestResultList(tk.Frame):
 
     def get_df_csv(self, csv_folder_name):
         """ Fonction qui récupére les données des CSV et remplie la treeview"""
-        root_path = config.get('ResultsFolder', 'SuiviPath')
-        csv_path = root_path + "\\" + csv_folder_name + "\CSV\*.csv"
+        if csv_folder_name == "En attente export":
+            #print('test')
+            csv_path = config.get('ResultsFolder', 'ExportFolder') + "\*.csv"
+        else:
+            root_path = config.get('ResultsFolder', 'SuiviPath')
+            csv_path = root_path + "\\" + csv_folder_name + "\**\*.csv"
+
         # print(csv_path)
         self.frame = []
         li = []
         list_csv = [name for name in glob.glob(csv_path)]
 
         for filename in glob.glob(csv_path):
+
             # Vérification encodage
             with open(filename, 'rb') as f:
                 first_four = f.read(4)
@@ -160,6 +197,8 @@ class TestResultList(tk.Frame):
         for n in range(len(self.frame.index.values)):
             # Récupération du N°UM avec position
             um = (os.path.basename(self.frame.iloc[n, -2]).split("-")[0],)
+            # Récupération chemin
+            filepath = self.frame.iloc[n, -2]
             # On concat le N°UM avec le reste des infos
             tout = um + tuple(self.frame.iloc[n, [0, 1, 2, 3, 4, 5]])
 
@@ -169,12 +208,15 @@ class TestResultList(tk.Frame):
                 row_color = "red"
             elif self.frame.iloc[n, -1]:
                 row_color = "blue"
+            elif filepath is not None and "error-csv" in filepath:
+                row_color = "orange"
             else:
                 row_color = ""
 
             self.tree.insert('', 'end', values=tout, tags=row_color)
             self.tree.tag_configure("red", background="red")
             self.tree.tag_configure("blue", background="blue")
+            self.tree.tag_configure("orange", background="orange")
 
 
 class Details(tk.Frame):
