@@ -3,8 +3,9 @@ import tkinter as tk
 import os
 import glob
 import pandas as pd
+import ghostscript
 from tkinter import ttk, Text, OptionMenu, StringVar, filedialog as fd
-from tkinter.messagebox import showinfo
+from tkinter.messagebox import showinfo, showerror
 from configparser import ConfigParser
 
 # Recuperation de la configuration
@@ -92,8 +93,11 @@ class TestResultList(tk.Frame):
     def popup_menu_send_pdf(self):
         """ Fonction pour l'envoie des PDF """
         # TODO : Voir si elle ne peut pas etre static
-        filename = fd.askopenfilename(title="Choix du PDF a transmettre a SAP", filetypes=[('PDF', '*.pdf')])
-        print(filename)
+        file_path = fd.askopenfilename(title="Choix du PDF a transmettre a SAP", filetypes=[('PDF', '*.pdf')])
+        print(file_path)
+        csv_filepath = config.get('Annexe', 'SaveTiffFolder') + "\\test.tiff"
+        print(csv_filepath)
+        pdf_to_tiff(file_path, csv_filepath)
 
         pass
 
@@ -262,9 +266,29 @@ class App(tk.Tk):
         self.main_application.grid(row=0, column=0, sticky='nswe')
         # OtherFrame(self).pack(side="bottom")
 
+    # afficher les erreurs
+    # todo : a réactiver
+    # def report_callback_exception(self, exc, val, tb):
+    #     showerror("Error", message=str(val))
 
-def hello():
-    print("hello!")
+
+def pdf_to_tiff(path_to_pdf, path_export_tiff):
+    # todo : mettre les parametres dans le config.ini
+    args = [
+        "ps2pdf",  # actual value doesn't matter
+        "-dNOPAUSE", "-dBATCH", "-dSAFER",
+        "-r150",
+        "-sDEVICE=tiff24nc",
+        "-sCompression=pack",
+        "-sOutputFile=" + path_export_tiff,
+        path_to_pdf
+    ]
+    try:
+        ghostscript.Ghostscript(*args)
+        return True
+    except:
+        return False
+
 
 
 if __name__ == "__main__":
