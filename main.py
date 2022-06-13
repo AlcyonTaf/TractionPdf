@@ -1,13 +1,23 @@
+# Interface graphique
 import tkinter as tk
+# Utilitaire fichier/dossier
 import os
+# Trouver tous les fichiers d'un dossier
 import glob
+# Manipulation de données
 import pandas as pd
+# Pour générer un Tiff a partir d'un PDF
 import ghostscript
+# Pour copier/deplacer fichier
+import shutil
 from datetime import datetime
+# Manipulation de xml
 from lxml import etree as et
 from tkinter import ttk, Text, OptionMenu, StringVar, filedialog as fd
 from tkinter.messagebox import showinfo, showerror
+# Gestion d'un fichier de configuration
 from configparser import ConfigParser
+
 
 # todo : rajouter archivage fichier d'export depuis menu principal
 # todo : rajouter description du programme et explication
@@ -66,7 +76,7 @@ class TestResultList(tk.Frame):
         self.tree.grid(row=1, column=0, sticky='nesw')
 
         # Treeview event click => Pour affichage des info dans détails
-        self.tree.bind("<<TreeviewSelect>>", self.on_select)
+        self.tree.bind("<<TreeviewSelect>>", self.on_select_treeview_item)
         # Treeview event click droit => pour affichage popup menu
         self.tree.bind("<Button-3>", self.show_popup_menu)
 
@@ -77,27 +87,20 @@ class TestResultList(tk.Frame):
 
         # Ajout d'un menu déroulant pour le choix de la date
         self.folder_list = StringVar()
-        # TODO : Choix par default, voir pour choisir date du jour
         self.folder_list.set(self.get_result_date_list()[0])
         self.dropdown_export = OptionMenu(self, self.folder_list, *self.get_result_date_list(), command=self.get_df_csv)
         self.dropdown_export.grid(row=0, column=0)
         # callback du dropdown => pas utile au final car on utilise command=
         # self.folderlist.trace("w", self.callback_dropdown_export)
 
-        # Todo : Ajouter un bouton pour actualiser ?
         # Création d'un menu popup lors du clic droit
         self.popup_menu = tk.Menu(self, tearoff=0)
-
 
     def popup_menu_send_pdf(self):
         """ Fonction pour l'envoie des PDF """
         # TODO : Voir si elle ne peut pas etre static
-        # Todo : Gerer si pas de fichier sélectionner
         file_path = fd.askopenfilename(title="Choix du PDF a transmettre a SAP", filetypes=[('PDF', '*.pdf')])
         if file_path and len(self.tree.selection()) > 0:
-
-            # Todo : Voir le nom a donné au fichier, pour le moment test est définit dans
-            #  la def, il faudrait le faire ici
             item = self.tree.selection()[0]
             essais_Id = self.tree.item(item, "value")
             try:
@@ -110,6 +113,7 @@ class TestResultList(tk.Frame):
             else:
                 # Si ok on copie les fichier
                 # Todo : Faire copie des fichiers dans répertoire d'envoie SAP puis on archive
+                # Todo afficher message pour dire ok
                 pass
 
     def popup_menu_delete_file(self):
@@ -127,7 +131,7 @@ class TestResultList(tk.Frame):
         finally:
             self.popup_menu.grab_release()
 
-    def on_select(self, event):
+    def on_select_treeview_item(self, event):
         # Todo : Prévoir le cas ou la treeview est vide
         if len(self.tree.selection()) > 0:
             item = self.tree.selection()[0]
@@ -151,10 +155,12 @@ class TestResultList(tk.Frame):
     #         showinfo(title='Information', message=','.join(record))
 
     def get_result_date_list(self):
-        # TODO : ne garder que la date
         os.chdir(config.get('ResultsFolder', 'SuiviPath'))
         result_list = ["En attente export"]
-        result_list.extend([name for name in os.listdir(".") if os.path.isdir(name)])
+        list_folder = [name for name in os.listdir(".") if os.path.isdir(name)]
+        # On trie la liste des dossiers en fonction de la date, plus récent en 1er
+        list_folder.sort(key=lambda x: datetime.strptime(x.split(' ')[2], "%d-%m-%y"), reverse=True)
+        result_list.extend(list_folder)
         return result_list
 
     def callback_dropdown_export(self, *args):
@@ -185,61 +191,68 @@ class TestResultList(tk.Frame):
         self.frame = []
         li = []
         list_csv = [name for name in glob.glob(csv_path)]
+        # Vérification si le dossier contient des fichiers
+        if list_csv:
+            # Todo rajouter vérification si fichier
+            for filename in list_csv:
+                # Vérification encodage
+                with open(filename, 'rb') as f:
+                    first_four = f.read(4)
+                if first_four[1] == 0 and first_four[3] == 0:
+                    encode = "utf_16_le"
+                else:
+                    encode = "ascii"
+                # création du dataframe
+                df = pd.read_csv(filename, index_col=None, header=None, sep=';', encoding=encode,
+                                 names=["Commande", "Poste", "UM", "Sequence Essai", "Sequence Loc",
+                                        "Nbr Epr", "Machine", "Date", "Opérateur", "Rp0.2", "ReH", "Rm", "ReL", "Rp0.5",
+                                        "Rp1",
+                                        "Rt0.5", "EYoung", "A Lo80mm", "A Lo50mm", "A Lo=2Inch", "A Lo200mm",
+                                        "A Lo5.65VSo",
+                                        "A Lo4d", "A Lo5d", "A Lo16mm", "Z%", "Z%Ind"])
+                df['Nom fichier'] = filename
+                # print(df)
+                li.append(df)
 
-        for filename in glob.glob(csv_path):
+            self.frame = pd.concat(li, axis=0, ignore_index=True)
+            # Détection des doublons
+            self.frame['double'] = self.frame.duplicated(keep=False,
+                                                         subset=["Commande", "Poste", "UM", "Sequence Essai",
+                                                                 "Sequence Loc"])
+            # print(type(frame))
+            # On vide la treeview
+            for item in self.tree.get_children():
+                self.tree.delete(item)
 
-            # Vérification encodage
-            with open(filename, 'rb') as f:
-                first_four = f.read(4)
-            if first_four[1] == 0 and first_four[3] == 0:
-                encode = "utf_16_le"
-            else:
-                encode = "ascii"
-            # création du dataframe
-            df = pd.read_csv(filename, index_col=None, header=None, sep=';', encoding=encode,
-                             names=["Commande", "Poste", "UM", "Sequence Essai", "Sequence Loc",
-                                    "Nbr Epr", "Machine", "Date", "Opérateur", "Rp0.2", "ReH", "Rm", "ReL", "Rp0.5",
-                                    "Rp1",
-                                    "Rt0.5", "EYoung", "A Lo80mm", "A Lo50mm", "A Lo=2Inch", "A Lo200mm", "A Lo5.65VSo",
-                                    "A Lo4d", "A Lo5d", "A Lo16mm", "Z%", "Z%Ind"])
-            df['Nom fichier'] = filename
-            # print(df)
-            li.append(df)
+            # Boucle sur la df et on remplie la treeview
+            for n in range(len(self.frame.index.values)):
+                # Récupération du N°UM avec position
+                um = (os.path.basename(self.frame.iloc[n, -2]).split("-")[0],)
+                # Récupération chemin
+                filepath = self.frame.iloc[n, -2]
+                # On concat le N°UM avec le reste des infos
+                tout = um + tuple(self.frame.iloc[n, [0, 1, 2, 3, 4, 5]])
 
-        self.frame = pd.concat(li, axis=0, ignore_index=True)
-        # Détection des doublons
-        self.frame['double'] = self.frame.duplicated(keep=False,
-                                                     subset=["Commande", "Poste", "UM", "Sequence Essai",
-                                                             "Sequence Loc"])
-        # print(type(frame))
-        # On vide la treeview
-        for item in self.tree.get_children():
-            self.tree.delete(item)
+                # Essai pour mettre en couleur certain probleme
+                # Si il n'y a pas d'UM dans le nom du fichier => envoie de résultat avec méthode sans QR
+                if not um[0][:6].isdigit():
+                    row_color = "red"
+                elif self.frame.iloc[n, -1]:
+                    row_color = "blue"
+                elif filepath is not None and "error-csv" in filepath:
+                    row_color = "orange"
+                else:
+                    row_color = ""
 
-        # Boucle sur la df et on remplie la treeview
-        for n in range(len(self.frame.index.values)):
-            # Récupération du N°UM avec position
-            um = (os.path.basename(self.frame.iloc[n, -2]).split("-")[0],)
-            # Récupération chemin
-            filepath = self.frame.iloc[n, -2]
-            # On concat le N°UM avec le reste des infos
-            tout = um + tuple(self.frame.iloc[n, [0, 1, 2, 3, 4, 5]])
-
-            # Essai pour mettre en couleur certain probleme
-            # Si il n'y a pas d'UM dans le nom du fichier => envoie de résultat avec méthode sans QR
-            if not um[0][:6].isdigit():
-                row_color = "red"
-            elif self.frame.iloc[n, -1]:
-                row_color = "blue"
-            elif filepath is not None and "error-csv" in filepath:
-                row_color = "orange"
-            else:
-                row_color = ""
-
-            self.tree.insert('', 'end', values=tout, tags=row_color)
-            self.tree.tag_configure("red", background="red")
-            self.tree.tag_configure("blue", background="blue")
-            self.tree.tag_configure("orange", background="orange")
+                self.tree.insert('', 'end', values=tout, tags=row_color)
+                self.tree.tag_configure("red", background="red")
+                self.tree.tag_configure("blue", background="blue")
+                self.tree.tag_configure("orange", background="orange")
+        else:
+            # On vide la treeview
+            for item in self.tree.get_children():
+                self.tree.delete(item)
+            showinfo("Pas de fichier!", "Aucun fichier n'est présent dans le dossier")
 
 
 class Details(tk.Frame):
@@ -343,16 +356,16 @@ def xml_pdf_to_tiff(essais_Id):
 
 
 def pdf_to_tiff(path_to_pdf, essais_Id):
-    # todo : mettre les parametres dans le config.ini
+    # todo : mettre les parametres de la converison en tiff dans le config.ini
     tiff_name = "\TIFF_" + essais_Id[1] + "_" + essais_Id[2] + "_" + essais_Id[3] + "_" + essais_Id[4] + "_" + \
                 essais_Id[5] + ".tiff"
-    path_export_tiff = config.get('Annexe', 'SaveTiffFolder') + tiff_name
+    path_export_tiff = config.get('TIFF', 'SaveTiffFolder') + tiff_name
     args = [
         "ps2pdf",  # actual value doesn't matter
         "-dNOPAUSE", "-dBATCH", "-dSAFER",
-        "-r150",
-        "-sDEVICE=tiff24nc",
-        "-sCompression=pack",
+        "-r" + config.get('TIFF', 'Resolution'),
+        "-sDEVICE=" + config.get('TIFF', 'Device'),
+        "-sCompression=" + config.get('TIFF', 'Compression'),
         "-sOutputFile=" + path_export_tiff,
         path_to_pdf
     ]
@@ -361,7 +374,7 @@ def pdf_to_tiff(path_to_pdf, essais_Id):
 
 
 if __name__ == "__main__":
-    # Todo : Vérifier que la sctructure des dossier est ok, sinon voir pour créer
+    # Todo : Vérifier que la structure des dossier est ok, sinon voir pour créer
     # Vérification si le fichier de config est bien présent
     # Recuperation de la configuration
     if os.path.exists('config.ini'):
