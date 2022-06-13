@@ -282,8 +282,8 @@ class MenuTest(tk.Menu):
 class App(tk.Tk):
     def __init__(self):
         tk.Tk.__init__(self)
-        menubar = MenuTest(self)
-        self.config(menu=menubar)
+        self.menubar = MenuTest(self)
+        self.config(menu=self.menubar)
 
         self.title("Gestion de l'export des résultats de traction")
         # self.geometry('640x480')
