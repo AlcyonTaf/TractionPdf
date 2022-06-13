@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<__Essais>
+  <__Essai>
+    <Source></Source>
+    <TimeStamp></TimeStamp>
+    <NoCommande></NoCommande>
+    <NoPoste></NoPoste>
+    <SapOf />
+    <Batch></Batch>
+    <NumPlaque></NumPlaque>
+    <NumPlaqueMQ></NumPlaqueMQ>
+    <StatutPlaque></StatutPlaque>
+    <DateStatutPlaque></DateStatutPlaque>
+    <RemStatPlaque />
+    <SequenceLoc></SequenceLoc>
+    <Eprouvettes></Eprouvettes>
+    <OperationCode />
+    <OperationUser />
+    <OperationDate />
+    <OperationTime />
+  </__Essai>
+</__Essais>

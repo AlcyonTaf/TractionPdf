@@ -8,9 +8,6 @@ from tkinter import ttk, Text, OptionMenu, StringVar, filedialog as fd
 from tkinter.messagebox import showinfo, showerror
 from configparser import ConfigParser
 
-# Recuperation de la configuration
-config = ConfigParser()
-config.read('config.ini')
 
 
 class MainApplication(tk.Frame):
@@ -95,13 +92,13 @@ class TestResultList(tk.Frame):
     def popup_menu_send_pdf(self):
         """ Fonction pour l'envoie des PDF """
         # TODO : Voir si elle ne peut pas etre static
+        # Todo : Gerer si pas de fichier sélectionner
         file_path = fd.askopenfilename(title="Choix du PDF a transmettre a SAP", filetypes=[('PDF', '*.pdf')])
-        print(file_path)
-        csv_filepath = config.get('Annexe', 'SaveTiffFolder') + "\\test.tiff"
-        print(csv_filepath)
-        pdf_to_tiff(file_path, csv_filepath)
-
-        pass
+        if file_path:
+            print(file_path)
+            csv_filepath = config.get('Annexe', 'SaveTiffFolder') + "\\test.tiff"
+            print(csv_filepath)
+            pdf_to_tiff(file_path, csv_filepath)
 
     def popup_menu_delete_file(self):
         print(self.popup_menu.selection)
@@ -255,7 +252,7 @@ class App(tk.Tk):
         menubar = MenuTest(self)
         self.config(menu=menubar)
 
-        self.title("Test")
+        self.title("Gestion de l'export des résultats de traction")
         # self.geometry('640x480')
         # self.maxsize(800, 600)
         # self.minsize(300, 400)
@@ -294,6 +291,16 @@ def pdf_to_tiff(path_to_pdf, path_export_tiff):
 
 
 if __name__ == "__main__":
-    app = App()
-    # MainApplication(root).pack(side="top", fill="both", expand=True)
-    app.mainloop()
+    # Vérification si le fichier de config est bien présent
+    # Recuperation de la configuration
+    if os.path.exists('config.ini'):
+        config = ConfigParser()
+        config.read('config.ini')
+        app = App()
+        # MainApplication(root).pack(side="top", fill="both", expand=True)
+        app.mainloop()
+    else:
+        showerror("Error", message="Le fichier config.ini n'est pas présent.")
+        quit()
+
+

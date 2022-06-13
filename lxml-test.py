@@ -1,7 +1,5 @@
-import xml.etree.ElementTree as ET
-import xml.dom.minidom as minidom
+from lxml import etree as ET
 import os
-
 
 m_encoding = 'ISO-8859-1'
 
@@ -23,19 +21,21 @@ root_eprouvette = eprouvette.getroot()
 parametre = ET.parse(path_to_xml_parametre)
 root_parametre = parametre.getroot()
 
-essais_eprouvettes = essais.find("./__Essai/Eprouvettes")
+#for element in root_essais.iter():
+#    print(element)
 
-essais_eprouvettes.append(root_eprouvette)
-
-
-
-
-
-# for elm in root_essais.iter():
-#     print(elm.tag)
+Numpara = root_parametre.find("./NumPara")
+Numpara.text = "test"
 
 
 
-xmlpretty = minidom.parseString(ET.tostring(root_essais, encoding='ISO-8859-1').decode('ISO-8859-1')).toprettyxml()
-with open('test.xml','w') as f:
-    f.write(ET.tostring(root_essais, encoding='ISO-8859-1').decode('ISO-8859-1'))
+eprouvette_para = root_eprouvette.find("./Parametres")
+eprouvette_para.insert(0, root_parametre)
+
+essais_eprouvette = root_essais.find("./__Essai/Eprouvettes")
+essais_eprouvette.insert(0, root_eprouvette)
+
+ET.indent(root_essais)
+ET.ElementTree(root_essais).write('test.xml', pretty_print=True, encoding='ISO-8859-1')
+
+

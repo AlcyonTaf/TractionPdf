@@ -1,0 +1,12 @@
+<Eprouvette>
+    <SeqEssais/>
+    <TypeEssai/>
+    <Temperature/>
+    <UnitTemp/>
+    <EtatRef/>
+    <StatutEpr/>
+    <DateStatutEpr/>
+    <RemStatEpr />
+    <TTHs/>
+    <Parametres/>
+</Eprouvette>
