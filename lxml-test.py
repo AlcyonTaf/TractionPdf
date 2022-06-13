@@ -1,41 +1,55 @@
 from lxml import etree as ET
 import os
+from datetime import datetime
 
-m_encoding = 'ISO-8859-1'
+
+#test date
+
+print(datetime.now().strftime('%Y%m%d%H%M%S%f'))
+
+xml_encoding = 'ISO-8859-1'
 
 script_path = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
-print(script_path)
 path_to_xml_essais = os.path.join(script_path, 'Xml Template', 'xml_template_essais.xml')
 path_to_xml_eprouvette = os.path.join(script_path, 'Xml Template', 'xml_template_eprouvette.xml')
 path_to_xml_parametre = os.path.join(script_path, 'Xml Template', 'xml_template_parametre.xml')
 # récupération des templates
 # Essais
-essais = ET.parse(path_to_xml_essais)
-root_essais = essais.getroot()
+root_essais = ET.parse(path_to_xml_essais).getroot()
 # Eprouvette
-eprouvette = ET.parse(path_to_xml_eprouvette)
-root_eprouvette = eprouvette.getroot()
+root_eprouvette = ET.parse(path_to_xml_eprouvette).getroot()
 # Parametre
-parametre = ET.parse(path_to_xml_parametre)
-root_parametre = parametre.getroot()
-
-#for element in root_essais.iter():
-#    print(element)
-
-Numpara = root_parametre.find("./NumPara")
-Numpara.text = "test"
+root_parametre = ET.parse(path_to_xml_parametre).getroot()
 
 
+# Dans un premier temps on remplie la partie parametre
+root_parametre.find("./NumPara").text = "NumPara"
+root_parametre.find("./ValuePara").text = "ValuePara"
+root_parametre.find("./ValueParaT").text = "ValueParaT"
+root_parametre.find("./SequenceResult").text = "SequenceResult"
+root_parametre.find("./SequenceEssEpr").text = "SequenceEssEpr"
 
-eprouvette_para = root_eprouvette.find("./Parametres")
-eprouvette_para.insert(0, root_parametre)
+# insert para dans eprouvette
+root_eprouvette.find("./Parametres").insert(0, root_parametre)
+#eprouvette_para.insert(0, root_parametre)
 
-essais_eprouvette = root_essais.find("./__Essai/Eprouvettes")
-essais_eprouvette.insert(0, root_eprouvette)
+#On complete eprouvette
+root_eprouvette.find("./SeqEssais").text = "SeqEssais"
+
+# insert eprouvette dans essais
+root_essais.find("./__Essai/Eprouvettes").insert(0, root_eprouvette)
+
+#On complete essais
+root_essais.find("./__Essai/Source").text = "Source"
+root_essais.find("./__Essai/TimeStamp").text = "TimeStamp"
+root_essais.find("./__Essai/NoCommande").text = "NoCommande"
+root_essais.find("./__Essai/NoPoste").text = "NoPoste"
+root_essais.find("./__Essai/Batch").text = "Batch"
+root_essais.find("./__Essai/SequenceLoc").text = "SequenceLoc"
 
 ET.indent(root_essais)
-ET.ElementTree(root_essais).write('test.xml', pretty_print=True, encoding='ISO-8859-1')
+ET.ElementTree(root_essais).write('test.xml', pretty_print=True, encoding=xml_encoding)
 
 

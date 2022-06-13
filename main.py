@@ -1,14 +1,16 @@
-# Use Tkinter for python 2, tkinter for python 3
 import tkinter as tk
 import os
 import glob
 import pandas as pd
 import ghostscript
+from datetime import datetime
+from lxml import etree as et
 from tkinter import ttk, Text, OptionMenu, StringVar, filedialog as fd
 from tkinter.messagebox import showinfo, showerror
 from configparser import ConfigParser
 
-
+# todo : rajouter archivage fichier d'export depuis menu principal
+# todo : rajouter description du programme et explication
 
 class MainApplication(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
@@ -73,35 +75,46 @@ class TestResultList(tk.Frame):
         self.scrollbar.grid(row=1, column=1, sticky='nse')
         self.tree.configure(yscrollcommand=self.scrollbar.set)
 
-        # Ajout d'un menu deroulant pour le choix de la date
-        self.folderlist = StringVar()
-        # TODO : Choix par defaut, voir pour choisir date du jour
-        self.folderlist.set(self.get_result_date_list()[0])
-        self.dropdown_export = OptionMenu(self, self.folderlist, *self.get_result_date_list(), command=self.get_df_csv)
+        # Ajout d'un menu déroulant pour le choix de la date
+        self.folder_list = StringVar()
+        # TODO : Choix par default, voir pour choisir date du jour
+        self.folder_list.set(self.get_result_date_list()[0])
+        self.dropdown_export = OptionMenu(self, self.folder_list, *self.get_result_date_list(), command=self.get_df_csv)
         self.dropdown_export.grid(row=0, column=0)
         # callback du dropdown => pas utile au final car on utilise command=
         # self.folderlist.trace("w", self.callback_dropdown_export)
 
         # Todo : Ajouter un bouton pour actualiser ?
-
-        #Création d'un menu popup lors du clic droit
+        # Création d'un menu popup lors du clic droit
         self.popup_menu = tk.Menu(self, tearoff=0)
-        self.popup_menu.add_command(label="Envoyer annexe", command=self.popup_menu_send_pdf)
-        self.popup_menu.add_command(label="Supprimer le fichier", command=self.popup_menu_delete_file)
+
 
     def popup_menu_send_pdf(self):
         """ Fonction pour l'envoie des PDF """
         # TODO : Voir si elle ne peut pas etre static
         # Todo : Gerer si pas de fichier sélectionner
         file_path = fd.askopenfilename(title="Choix du PDF a transmettre a SAP", filetypes=[('PDF', '*.pdf')])
-        if file_path:
-            print(file_path)
-            csv_filepath = config.get('Annexe', 'SaveTiffFolder') + "\\test.tiff"
-            print(csv_filepath)
-            pdf_to_tiff(file_path, csv_filepath)
+        if file_path and len(self.tree.selection()) > 0:
+
+            # Todo : Voir le nom a donné au fichier, pour le moment test est définit dans
+            #  la def, il faudrait le faire ici
+            item = self.tree.selection()[0]
+            essais_Id = self.tree.item(item, "value")
+            try:
+                # On converti le PDF en TIFF
+                pdf_to_tiff(file_path, essais_Id)
+                # on créer le XML
+                xml_pdf_to_tiff(essais_Id)
+            except Exception as value:
+                showerror("Erreur Annexe!", "Une erreure c'est produit lors de la génération : " + value)
+            else:
+                # Si ok on copie les fichier
+                # Todo : Faire copie des fichiers dans répertoire d'envoie SAP puis on archive
+                pass
 
     def popup_menu_delete_file(self):
-        print(self.popup_menu.selection)
+        # print(self.popup_menu.selection)
+        # Todo : faire suppresion fichier csv
         tk.messagebox.showinfo("Test", "test")
 
     def show_popup_menu(self, event):
@@ -119,11 +132,11 @@ class TestResultList(tk.Frame):
         if len(self.tree.selection()) > 0:
             item = self.tree.selection()[0]
             idx = self.tree.index(item)
-            #print(item)
-            #print(idx)
-            #print(self.tree.item(item, "value"))
+            # print(item)
+            # print(idx)
+            # print(self.tree.item(item, "value"))
             # On récupére tous les détails dans le df avec l'index
-            #print(self.frame.iloc[[idx]])
+            # print(self.frame.iloc[[idx]])
             # On complete détails
             details_text = self.parent.details_text.text
             details_text.delete('1.0', 'end')
@@ -153,10 +166,17 @@ class TestResultList(tk.Frame):
         details_text.insert('end', '\n' + 'sfsdfsfd')
 
     def get_df_csv(self, csv_folder_name):
-        """ Fonction qui récupére les données des CSV et remplie la treeview"""
+        """ Fonction qui récupére les données des CSV et remplie la treeview
+            On en profite également pour completer le menu popup"""
+
+        # Définition du menu popup a chaque fois qu'on sélectionne un item de la liste
+        self.popup_menu.delete(0, 'end')
+        self.popup_menu.add_command(label="Envoyer annexe", command=self.popup_menu_send_pdf)
+
         if csv_folder_name == "En attente export":
-            #print('test')
+            # print('test')
             csv_path = config.get('ResultsFolder', 'ExportFolder') + "\*.csv"
+            self.popup_menu.add_command(label="Supprimer le fichier", command=self.popup_menu_delete_file)
         else:
             root_path = config.get('ResultsFolder', 'SuiviPath')
             csv_path = root_path + "\\" + csv_folder_name + "\**\*.csv"
@@ -271,8 +291,62 @@ class App(tk.Tk):
     #     showerror("Error", message=str(val))
 
 
-def pdf_to_tiff(path_to_pdf, path_export_tiff):
+def xml_pdf_to_tiff(essais_Id):
+    xml_encoding = 'ISO-8859-1'
+    # On créer le nom du fichier xml et on définit ou l'enregistrer
+    xml_name = "\IC_PL_ESS_RES_" + essais_Id[1] + "_" + essais_Id[2] + "_" + essais_Id[3] + "_" + essais_Id[4] + "_" + \
+               essais_Id[5] + ".xml"
+    xml_path_to_save = config.get('Annexe', 'SaveXMLTiffFolder') + xml_name
+
+    # On récupere l'emplacement du script pour ensuite chercher les templates
+    script_path = os.path.realpath(
+        os.path.join(os.getcwd(), os.path.dirname(__file__)))
+
+    path_to_xml_essais = os.path.join(script_path, 'Xml Template', 'xml_template_essais.xml')
+    path_to_xml_eprouvette = os.path.join(script_path, 'Xml Template', 'xml_template_eprouvette.xml')
+    path_to_xml_parametre = os.path.join(script_path, 'Xml Template', 'xml_template_parametre.xml')
+    # import des templates
+    # Essais
+    root_essais = et.parse(path_to_xml_essais).getroot()
+    # Eprouvette
+    root_eprouvette = et.parse(path_to_xml_eprouvette).getroot()
+    # Parametre
+    root_parametre = et.parse(path_to_xml_parametre).getroot()
+
+    # Dans un premier temps on remplie la partie parametre
+    root_parametre.find("./NumPara").text = "NumPara"
+    root_parametre.find("./ValuePara").text = "ValuePara"
+    root_parametre.find("./ValueParaT").text = "ValueParaT"
+    root_parametre.find("./SequenceResult").text = "SequenceResult"
+    root_parametre.find("./SequenceEssEpr").text = "SequenceEssEpr"
+
+    # insert para dans eprouvette
+    root_eprouvette.find("./Parametres").insert(0, root_parametre)
+    # eprouvette_para.insert(0, root_parametre)
+
+    # On complete eprouvette
+    root_eprouvette.find("./SeqEssais").text = essais_Id[5]
+
+    # insert eprouvette dans essais
+    root_essais.find("./__Essai/Eprouvettes").insert(0, root_eprouvette)
+
+    # On complete essais
+    root_essais.find("./__Essai/Source").text = "LABO_IC"
+    root_essais.find("./__Essai/TimeStamp").text = datetime.now().strftime('%Y%m%d%H%M%S%f')
+    root_essais.find("./__Essai/NoCommande").text = essais_Id[1]
+    root_essais.find("./__Essai/NoPoste").text = essais_Id[2]
+    root_essais.find("./__Essai/Batch").text = essais_Id[3]
+    root_essais.find("./__Essai/SequenceLoc").text = essais_Id[4]
+
+    et.indent(root_essais)
+    et.ElementTree(root_essais).write(xml_path_to_save, pretty_print=True, encoding=xml_encoding)
+
+
+def pdf_to_tiff(path_to_pdf, essais_Id):
     # todo : mettre les parametres dans le config.ini
+    tiff_name = "\TIFF_" + essais_Id[1] + "_" + essais_Id[2] + "_" + essais_Id[3] + "_" + essais_Id[4] + "_" + \
+                essais_Id[5] + ".tiff"
+    path_export_tiff = config.get('Annexe', 'SaveTiffFolder') + tiff_name
     args = [
         "ps2pdf",  # actual value doesn't matter
         "-dNOPAUSE", "-dBATCH", "-dSAFER",
@@ -282,15 +356,12 @@ def pdf_to_tiff(path_to_pdf, path_export_tiff):
         "-sOutputFile=" + path_export_tiff,
         path_to_pdf
     ]
-    try:
-        ghostscript.Ghostscript(*args)
-        return True
-    except:
-        return False
 
+    ghostscript.Ghostscript(*args)
 
 
 if __name__ == "__main__":
+    # Todo : Vérifier que la sctructure des dossier est ok, sinon voir pour créer
     # Vérification si le fichier de config est bien présent
     # Recuperation de la configuration
     if os.path.exists('config.ini'):
@@ -302,5 +373,3 @@ if __name__ == "__main__":
     else:
         showerror("Error", message="Le fichier config.ini n'est pas présent.")
         quit()
-
-
