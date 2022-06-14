@@ -6,9 +6,9 @@ import os
 import glob
 # Manipulation de données
 import pandas as pd
-# Pour générer un Tiff a partir d'un PDF
+# Pour générer un Tiff à partir d'un PDF
 import ghostscript
-# Pour copier/deplacer fichier
+# Pour copier/déplacer fichier
 import shutil
 from datetime import datetime
 # Manipulation de xml
@@ -89,9 +89,10 @@ class TestResultList(tk.Frame):
         self.tree.configure(yscrollcommand=self.scrollbar.set)
 
         # Ajout d'un menu déroulant pour le choix de la date
+        self.result_date_list = self.get_result_date_list()
         self.folder_list = StringVar()
-        self.folder_list.set(self.get_result_date_list()[0])
-        self.dropdown_export = OptionMenu(self, self.folder_list, *self.get_result_date_list(), command=self.get_df_csv)
+        self.folder_list.set(self.result_date_list[0])
+        self.dropdown_export = OptionMenu(self, self.folder_list, *self.result_date_list, command=self.get_df_csv)
         self.dropdown_export.grid(row=0, column=0)
         # callback du dropdown => pas utile au final car on utilise command=
         # self.folderlist.trace("w", self.callback_dropdown_export)
@@ -113,9 +114,9 @@ class TestResultList(tk.Frame):
         for child in children:
             um_value = self.tree.item(child, 'value')[0]
             if um_value.lower().startswith(search_value.lower()):
-                print(search_value)
-                print("trouvé")
-                print(um_value)
+                # print(search_value)
+                # print("trouvé")
+                # print(um_value)
                 search_result.append(child)
 
         if search_result:
@@ -127,6 +128,7 @@ class TestResultList(tk.Frame):
     def popup_menu_send_pdf(self):
         """ Fonction pour l'envoie des PDF """
         # TODO : Voir si elle ne peut pas etre static
+        result_SAP = []
         file_path = fd.askopenfilename(title="Choix du PDF a transmettre a SAP", filetypes=[('PDF', '*.pdf')])
         if file_path and len(self.tree.selection()) > 0:
             item = self.tree.selection()[0]
@@ -137,16 +139,41 @@ class TestResultList(tk.Frame):
                 # on créer le XML
                 xml_pdf_to_tiff(essais_Id, pdf_name)
             except Exception as value:
-                showerror("Erreur Annexe!", "Une erreure c'est produit lors de la génération : " + value)
+                showerror("Erreur Annexe!", "Une erreur c'est produit lors de la génération : " + str(value))
             else:
                 # Si ok on copie les fichier
                 # Todo : Faire copie des fichiers dans répertoire d'envoie SAP puis on archive
                 # Todo afficher message pour dire ok
-                pass
+                # on va copier, en faisant attention au droit les fichiers généré dans le dossier d'échange avec SAP
+                # Puis on archive les originaux en les déplaçant en ajoutant la date dans le nom du dossier
+                src_folder = config.get('Annexe', 'SaveXMLTiffFolder')
+                dst_folder = config.get('SAP', 'AICFolder')
+                dst_archive_folder = config.get('Annexe', 'ArchiveFolderXmlTiff')
+                files = [name for name in glob.glob(src_folder + "/*")]
+                print(files)
+                for file in files:
+                    if os.path.isfile(file):
+                        filename = os.path.basename(file)
+                        dst = os.path.join(dst_folder, filename)
+                        # Todo : Penser a vérifier que les droits sont correct sur destination
+                        try:
+                            result = shutil.copyfile(file, dst)
+                        except Exception as e:
+                            # Todo : voir pour afficher un message d'erreur a la fin
+                            showerror("Erreur Annexe!", "Une erreur c'est produit lors de la copie dans le dossier "
+                                                        "SAP : " + str(e))
+                        else:
+                            result_SAP.append(os.path.basename(result))
+                            # si pas d'erreur on archive
+                            dst = os.path.join(dst_archive_folder, filename)
+                            result_archive = shutil.move(file, dst)
+                            print(result_archive)
+        if result_SAP:
+            showinfo("Annexe transmise", " Liste des fichiers transmis :\n" + "\n".join(map(str, result_SAP)))
 
     def popup_menu_delete_file(self):
         # print(self.popup_menu.selection)
-        # Todo : faire suppresion fichier csv
+        # Todo : faire suppression fichier csv
         tk.messagebox.showinfo("Test", "test")
 
     def show_popup_menu(self, event):
@@ -172,9 +199,11 @@ class TestResultList(tk.Frame):
             # print(self.frame.iloc[[idx]])
             # On complete détails
             details_text = self.parent.details_text.text
+            details_text.config(state='normal')
             details_text.delete('1.0', 'end')
             # Todo : Voir pour afficher le nom du fichier correctement et non coupé
             details_text.insert('end', '\n' + str(self.frame.iloc[idx, 6:-1]))
+            details_text.config(state='disabled')
 
     # def item_selected(self, event):
     #     for selected_item in self.tree.selection():
@@ -184,6 +213,7 @@ class TestResultList(tk.Frame):
     #         showinfo(title='Information', message=','.join(record))
 
     def get_result_date_list(self):
+        """ Fonction qui récupère la liste des dossiers export """
         os.chdir(config.get('ResultsFolder', 'SuiviPath'))
         result_list = ["En attente export"]
         list_folder = [name for name in os.listdir(".") if os.path.isdir(name)]
@@ -192,13 +222,13 @@ class TestResultList(tk.Frame):
         result_list.extend(list_folder)
         return result_list
 
-    def callback_dropdown_export(self, *args):
-        # TODO : Mettre a jour la treeview avec la liste des fichiers de résultats du dossier sélectionner
-
-        # Essai modification partie détails
-        details_text = self.parent.details_text.text
-        print(self.parent.details_text.text.get('1.0', 'end'))
-        details_text.insert('end', '\n' + 'sfsdfsfd')
+    # def callback_dropdown_export(self, *args):
+    #     # TODO : Mettre a jour la treeview avec la liste des fichiers de résultats du dossier sélectionner
+    #     # Todo : vérifier si utilisé
+    #     # Essai modification partie détails
+    #     details_text = self.parent.details_text.text
+    #     print(self.parent.details_text.text.get('1.0', 'end'))
+    #     details_text.insert('end', '\n' + 'sfsdfsfd')
 
     def get_df_csv(self, csv_folder_name):
         """ Fonction qui récupére les données des CSV et remplie la treeview
@@ -285,6 +315,8 @@ class TestResultList(tk.Frame):
 
 
 class Details(tk.Frame):
+    """ Class pour afficher les détails d'un essai"""
+
     def __init__(self, parent, *args, **kwargs):
         tk.Frame.__init__(self, parent, bg="blue", *args, **kwargs)
         self.parent = parent
@@ -297,11 +329,11 @@ class Details(tk.Frame):
         self.text = Text(self)
         self.text.grid(row=0, column=0, sticky='news')
 
-        self.text.insert('1.0', 'ceci est un test')
-
 
 class ArchivePopup(tk.Toplevel):
-    def __int__(self):
+    """ Class pour afficher une fenêtre afin de faire l'archivage des dossiers d'export"""
+
+    def __init__(self):
         tk.Toplevel.__init__(self)
 
         self.geometry('300x300')
@@ -314,20 +346,27 @@ class ArchivePopup(tk.Toplevel):
 
 
 class MenuMain(tk.Menu):
+    """ Class contenant le menu"""
+
     def __init__(self, parent):
         tk.Menu.__init__(self, parent)
         self.parent = parent
         self.file_menu = tk.Menu(self, tearoff=False)
         self.add_cascade(label="Fichier", underline=0, menu=self.file_menu)
-        self.file_menu.add_command(label="Archivage", underline=1, command=test_toplevel)
+        self.file_menu.add_command(label="Archivage", underline=1, command=self.parent.archive_popup_window)
         self.file_menu.add_command(label="Exit", underline=2, command=self.quit)
 
 
 class App(tk.Tk):
+    """
+    Class principal de Tk
+    """
+
     def __init__(self):
         tk.Tk.__init__(self)
         self.menubar = MenuMain(self)
         self.config(menu=self.menubar)
+        self.archive_popup = None
 
         self.title("Gestion de l'export des résultats de traction")
         # self.geometry('640x480')
@@ -342,21 +381,23 @@ class App(tk.Tk):
         self.main_application.grid(row=0, column=0, sticky='nswe')
         # OtherFrame(self).pack(side="bottom")
 
-    def popup(self):
-        ArchivePopup()
+    # Pour créer l'instance de la class ArchivePopup toplevel
+    def archive_popup_window(self):
+        if self.archive_popup is None:
+            self.archive_popup = ArchivePopup()
+        else:
+            self.archive_popup.deiconify()
+        self.archive_popup.bind("<Destroy>", self._archive_popup_window_destroyed)
+
+    # Permet de remettre a None archive_popup et de faire une action a la fermeture de la fenêtre
+    def _archive_popup_window_destroyed(self, event):
+        if event.widget == self.archive_popup:
+            self.archive_popup = None
 
     # afficher les erreurs
     # todo : a réactiver
     # def report_callback_exception(self, exc, val, tb):
     #     showerror("Error", message=str(val))
-
-def test_toplevel():
-    top = tk.Toplevel()
-
-    top.geometry('300x300')
-    top.title('test archive')
-    l2 = tk.Label(top,text="test")
-    l2.pack()
 
 
 def xml_pdf_to_tiff(essais_Id, pdf_name):
@@ -418,7 +459,7 @@ def pdf_to_tiff(path_to_pdf, essais_Id):
     # todo : mettre les parametres de la converison en tiff dans le config.ini
     tiff_name = "\TIFF_" + essais_Id[1] + "_" + essais_Id[2] + "_" + essais_Id[3] + "_" + essais_Id[4] + "_" + \
                 essais_Id[5] + ".tiff"
-    path_export_tiff = config.get('TIFF', 'SaveTiffFolder') + tiff_name
+    path_export_tiff = config.get('Annexe', 'SaveXMLTiffFolder') + tiff_name
     args = [
         "ps2pdf",  # actual value doesn't matter
         "-dNOPAUSE", "-dBATCH", "-dSAFER",
