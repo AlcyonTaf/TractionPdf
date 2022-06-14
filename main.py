@@ -48,6 +48,7 @@ class TestResultList(tk.Frame):
     Ce drop down permet de choisir les résultats qui seront dans le treeview
     """
 
+    # todo : Ajouter une champ texte pour faire une recherche dans la treeview
     def __init__(self, parent, *args, **kwargs):
         tk.Frame.__init__(self, parent, *args, **kwargs)
         self.parent = parent
@@ -56,6 +57,8 @@ class TestResultList(tk.Frame):
         self.grid_rowconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=10)
         self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_columnconfigure(2, weight=1)
 
         # define columns
         columns = ('um', 'commande', 'poste', 'lot', 'seqloc', 'seqessai', 'nbrepr')
@@ -73,7 +76,7 @@ class TestResultList(tk.Frame):
         self.tree.heading('seqessai', text='Sequence Essai')
         self.tree.heading('nbrepr', text='Nbr Epr')
 
-        self.tree.grid(row=1, column=0, sticky='nesw')
+        self.tree.grid(row=1, column=0, columnspan=3, sticky='nesw')
 
         # Treeview event click => Pour affichage des info dans détails
         self.tree.bind("<<TreeviewSelect>>", self.on_select_treeview_item)
@@ -82,7 +85,7 @@ class TestResultList(tk.Frame):
 
         # add a scrollbar
         self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
-        self.scrollbar.grid(row=1, column=1, sticky='nse')
+        self.scrollbar.grid(row=1, column=3, sticky='nse')
         self.tree.configure(yscrollcommand=self.scrollbar.set)
 
         # Ajout d'un menu déroulant pour le choix de la date
@@ -93,8 +96,33 @@ class TestResultList(tk.Frame):
         # callback du dropdown => pas utile au final car on utilise command=
         # self.folderlist.trace("w", self.callback_dropdown_export)
 
+        # Ajout d'une entrée pour recherche par UM
+        self.search_entry = tk.Entry(self, width=15)
+        self.search_entry.grid(row=0, column=1, sticky="e", padx=2)
+        self.btn_search = tk.Button(self, text="rechercher", width=10, command=self.search_tree_view)
+        self.btn_search.grid(row=0, column=2, sticky="w", padx=2)
+
         # Création d'un menu popup lors du clic droit
         self.popup_menu = tk.Menu(self, tearoff=0)
+
+    def search_tree_view(self):
+        """ Fonction pour rechercher dans la treeview par sélection """
+        children = self.tree.get_children()
+        search_value = self.search_entry.get()
+        search_result = []
+        for child in children:
+            um_value = self.tree.item(child, 'value')[0]
+            if um_value.lower().startswith(search_value.lower()):
+                print(search_value)
+                print("trouvé")
+                print(um_value)
+                search_result.append(child)
+
+        if search_result:
+            self.tree.selection_set(search_result)
+        else:
+            if self.tree.selection():
+                self.tree.selection_remove(self.tree.selection())
 
     def popup_menu_send_pdf(self):
         """ Fonction pour l'envoie des PDF """
@@ -104,10 +132,10 @@ class TestResultList(tk.Frame):
             item = self.tree.selection()[0]
             essais_Id = self.tree.item(item, "value")
             try:
-                # On converti le PDF en TIFF
-                pdf_to_tiff(file_path, essais_Id)
+                # On converti le PDF en TIFF, qui nous retourne le nom du pdf
+                pdf_name = pdf_to_tiff(file_path, essais_Id)
                 # on créer le XML
-                xml_pdf_to_tiff(essais_Id)
+                xml_pdf_to_tiff(essais_Id, pdf_name)
             except Exception as value:
                 showerror("Erreur Annexe!", "Une erreure c'est produit lors de la génération : " + value)
             else:
@@ -122,6 +150,7 @@ class TestResultList(tk.Frame):
         tk.messagebox.showinfo("Test", "test")
 
     def show_popup_menu(self, event):
+        # Todo : voir pour ne pas afficher annexe si essai faux (red)
         try:
             item = self.tree.identify_row(event.y)
             self.popup_menu.selection = self.tree.set(item)
@@ -271,18 +300,33 @@ class Details(tk.Frame):
         self.text.insert('1.0', 'ceci est un test')
 
 
-class MenuTest(tk.Menu):
+class ArchivePopup(tk.Toplevel):
+    def __int__(self):
+        tk.Toplevel.__init__(self)
+
+        self.geometry('300x300')
+        self.title('Archivage')
+        # add an entry widget
+        self.e1 = tk.Entry(self)
+        self.e1.pack()
+
+        tk.Button(self, text="close", width="10", command=self.destroy).pack(expand=True)
+
+
+class MenuMain(tk.Menu):
     def __init__(self, parent):
         tk.Menu.__init__(self, parent)
-        filemenu = tk.Menu(self, tearoff=False)
-        self.add_cascade(label="File", underline=0, menu=filemenu)
-        filemenu.add_command(label="Exit", underline=1, command=self.quit)
+        self.parent = parent
+        self.file_menu = tk.Menu(self, tearoff=False)
+        self.add_cascade(label="Fichier", underline=0, menu=self.file_menu)
+        self.file_menu.add_command(label="Archivage", underline=1, command=test_toplevel)
+        self.file_menu.add_command(label="Exit", underline=2, command=self.quit)
 
 
 class App(tk.Tk):
     def __init__(self):
         tk.Tk.__init__(self)
-        self.menubar = MenuTest(self)
+        self.menubar = MenuMain(self)
         self.config(menu=self.menubar)
 
         self.title("Gestion de l'export des résultats de traction")
@@ -298,13 +342,24 @@ class App(tk.Tk):
         self.main_application.grid(row=0, column=0, sticky='nswe')
         # OtherFrame(self).pack(side="bottom")
 
+    def popup(self):
+        ArchivePopup()
+
     # afficher les erreurs
     # todo : a réactiver
     # def report_callback_exception(self, exc, val, tb):
     #     showerror("Error", message=str(val))
 
+def test_toplevel():
+    top = tk.Toplevel()
 
-def xml_pdf_to_tiff(essais_Id):
+    top.geometry('300x300')
+    top.title('test archive')
+    l2 = tk.Label(top,text="test")
+    l2.pack()
+
+
+def xml_pdf_to_tiff(essais_Id, pdf_name):
     xml_encoding = 'ISO-8859-1'
     # On créer le nom du fichier xml et on définit ou l'enregistrer
     xml_name = "\IC_PL_ESS_RES_" + essais_Id[1] + "_" + essais_Id[2] + "_" + essais_Id[3] + "_" + essais_Id[4] + "_" + \
@@ -327,11 +382,15 @@ def xml_pdf_to_tiff(essais_Id):
     root_parametre = et.parse(path_to_xml_parametre).getroot()
 
     # Dans un premier temps on remplie la partie parametre
-    root_parametre.find("./NumPara").text = "NumPara"
-    root_parametre.find("./ValuePara").text = "ValuePara"
-    root_parametre.find("./ValueParaT").text = "ValueParaT"
-    root_parametre.find("./SequenceResult").text = "SequenceResult"
-    root_parametre.find("./SequenceEssEpr").text = "SequenceEssEpr"
+    # NumPara = 907 pour annexe traction et micro
+    root_parametre.find("./NumPara").text = "907"
+    # pas de valuePara
+    # root_parametre.find("./ValuePara").text = "ValuePara"
+    # Ici on doit mettre le nom du fichier
+    root_parametre.find("./ValueParaT").text = pdf_name
+    # Pour sequence j'ai mis 1 pour le moment
+    root_parametre.find("./SequenceResult").text = "1"
+    root_parametre.find("./SequenceEssEpr").text = "1"
 
     # insert para dans eprouvette
     root_eprouvette.find("./Parametres").insert(0, root_parametre)
@@ -371,6 +430,8 @@ def pdf_to_tiff(path_to_pdf, essais_Id):
     ]
 
     ghostscript.Ghostscript(*args)
+
+    return tiff_name
 
 
 if __name__ == "__main__":
