@@ -19,7 +19,6 @@ from tkinter.messagebox import showinfo, showerror
 from configparser import ConfigParser
 
 
-# todo : rajouter archivage fichier d'export depuis menu principal
 # todo : rajouter description du programme et explication
 
 class MainApplication(tk.Frame):
@@ -48,7 +47,6 @@ class TestResultList(tk.Frame):
     Ce drop down permet de choisir les résultats qui seront dans le treeview
     """
 
-    # todo : Ajouter une champ texte pour faire une recherche dans la treeview
     def __init__(self, parent, *args, **kwargs):
         tk.Frame.__init__(self, parent, *args, **kwargs)
         self.parent = parent
@@ -213,8 +211,6 @@ class TestResultList(tk.Frame):
     #         showinfo(title='Information', message=','.join(record))
 
     # def callback_dropdown_export(self, *args):
-    #     # TODO : Mettre a jour la treeview avec la liste des fichiers de résultats du dossier sélectionner
-    #     # Todo : vérifier si utilisé
     #     # Essai modification partie détails
     #     details_text = self.parent.details_text.text
     #     print(self.parent.details_text.text.get('1.0', 'end'))
@@ -497,7 +493,7 @@ def xml_pdf_to_tiff(essais_Id, pdf_name):
 
 
 def pdf_to_tiff(path_to_pdf, essais_Id):
-    # todo : mettre les parametres de la converison en tiff dans le config.ini
+    """ Conversion des PDF en TIFF"""
     tiff_name = "\TIFF_" + essais_Id[1] + "_" + essais_Id[2] + "_" + essais_Id[3] + "_" + essais_Id[4] + "_" + \
                 essais_Id[5] + ".tiff"
     path_export_tiff = config.get('Annexe', 'SaveXMLTiffFolder') + tiff_name
