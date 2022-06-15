@@ -13,7 +13,7 @@ import shutil
 from datetime import datetime
 # Manipulation de xml
 from lxml import etree as et
-from tkinter import ttk, Text, OptionMenu, StringVar, filedialog as fd, Listbox
+from tkinter import ttk, Text, OptionMenu, StringVar, filedialog as fd
 from tkinter.messagebox import showinfo, showerror
 # Gestion d'un fichier de configuration
 from configparser import ConfigParser
@@ -126,16 +126,16 @@ class TestResultList(tk.Frame):
     def popup_menu_send_pdf(self):
         """ Fonction pour l'envoie des PDF """
         # TODO : Voir si elle ne peut pas etre static
-        result_SAP = []
+        result_sap = []
         file_path = fd.askopenfilename(title="Choix du PDF a transmettre a SAP", filetypes=[('PDF', '*.pdf')])
-        if file_path and len(self.tree.selection()) > 0:
+        if file_path and len(self.tree.selection()) == 1:
             item = self.tree.selection()[0]
-            essais_Id = self.tree.item(item, "value")
+            essais_id = self.tree.item(item, "value")
             try:
                 # On converti le PDF en TIFF, qui nous retourne le nom du pdf
-                pdf_name = pdf_to_tiff(file_path, essais_Id)
+                pdf_name = pdf_to_tiff(file_path, essais_id)
                 # on créer le XML
-                xml_pdf_to_tiff(essais_Id, pdf_name)
+                xml_pdf_to_tiff(essais_id, pdf_name)
             except Exception as value:
                 showerror("Erreur Annexe!", "Une erreur c'est produit lors de la génération : " + str(value))
             else:
@@ -161,29 +161,36 @@ class TestResultList(tk.Frame):
                             showerror("Erreur Annexe!", "Une erreur c'est produit lors de la copie dans le dossier "
                                                         "SAP : " + str(e))
                         else:
-                            result_SAP.append(os.path.basename(result))
+                            result_sap.append(os.path.basename(result))
                             # si pas d'erreur on archive
                             dst = os.path.join(dst_archive_folder, filename)
                             result_archive = shutil.move(file, dst)
                             print(result_archive)
-        if result_SAP:
-            showinfo("Annexe transmise", " Liste des fichiers transmis :\n" + "\n".join(map(str, result_SAP)))
+        if result_sap:
+            showinfo("Annexe transmise", " Liste des fichiers transmis :\n" + "\n".join(map(str, result_sap)))
 
-    def popup_menu_delete_file(self):
-        # print(self.popup_menu.selection)
+    def delete_file(self):
         # Todo : faire suppression fichier csv
-        tk.messagebox.showinfo("Test", "test")
+        if len(self.tree.selection()) == 1:
+            item = self.tree.selection()[0]
+            idx = self.tree.index(item)
+            file = str(self.frame.iloc[idx, -2])
+            print(str(self.frame.iloc[idx, -2]))
+            if os.path.exists(file):
+                os.remove(file)
+                self.get_df_csv('En attente export')
 
     def show_popup_menu(self, event):
         # Todo : voir pour ne pas afficher annexe si essai faux (red)
-        try:
-            item = self.tree.identify_row(event.y)
-            self.popup_menu.selection = self.tree.set(item)
-            self.tree.focus(item)
-            self.tree.selection_set(item)
-            self.popup_menu.post(event.x_root, event.y_root)
-        finally:
-            self.popup_menu.grab_release()
+        item = self.tree.identify_row(event.y)
+        if item:
+            try:
+                self.popup_menu.selection = self.tree.set(item)
+                self.tree.focus(item)
+                self.tree.selection_set(item)
+                self.popup_menu.post(event.x_root, event.y_root)
+            finally:
+                self.popup_menu.grab_release()
 
     def on_select_treeview_item(self, event):
         # Todo : Prévoir le cas ou la treeview est vide
@@ -227,7 +234,7 @@ class TestResultList(tk.Frame):
         if csv_folder_name == "En attente export":
             # print('test')
             csv_path = config.get('ResultsFolder', 'ExportFolder') + "\*.csv"
-            self.popup_menu.add_command(label="Supprimer le fichier", command=self.popup_menu_delete_file)
+            self.popup_menu.add_command(label="Supprimer le fichier", command=self.delete_file)
         else:
             root_path = config.get('ResultsFolder', 'SuiviPath')
             csv_path = root_path + "\\" + csv_folder_name + "\**\*.csv"
@@ -322,7 +329,7 @@ class ArchivePopup(tk.Toplevel):
     def __init__(self):
         tk.Toplevel.__init__(self)
 
-        self.geometry('300x300')
+        self.geometry('150x300')
         self.title('Archivage')
         # self.frame = tk.Frame(self)
         # self.frame.rowconfigure(0, weight=1)
@@ -351,24 +358,26 @@ class ArchivePopup(tk.Toplevel):
 
     def archive_suivi(self):
         result_archive = []
-        for i in self.listbox.curselection():
-            src = config.get('ResultsFolder', 'SuiviPath')
-            dst = config.get('ResultsFolder', 'ArchiveSuivi')
-            src_path = os.path.join(src, self.listbox.get(i))
-            print(src_path)
-            if os.path.isdir(src_path):
-                try:
-                    result = shutil.move(src_path, dst)
-                except Exception as e:
-                # Todo : voir pour afficher un message d'erreur a la fin
-                    showerror("Erreur Archivage!", "Une erreur c'est produit lors de l'archivage"
-                                            "SAP : " + str(e))
-                else:
-                    result_archive.append(os.path.basename(os.path.normpath(result)))
+        if len(self.listbox.curselection()) > 0:
+            for i in self.listbox.curselection():
+                src = config.get('ResultsFolder', 'SuiviPath')
+                dst = config.get('ResultsFolder', 'ArchiveSuivi')
+                src_path = os.path.join(src, self.listbox.get(i))
+                print(src_path)
+                if os.path.isdir(src_path):
+                    try:
+                        result = shutil.move(src_path, dst)
+                    except Exception as e:
+                        # Todo : voir pour afficher un message d'erreur a la fin
+                        showerror("Erreur Archivage!", "Une erreur c'est produit lors de l'archivage"
+                                                       "SAP : " + str(e))
+                    else:
+                        result_archive.append(os.path.basename(os.path.normpath(result)))
 
-        if result_archive:
-            showinfo("Archivage Terminé", " Liste des dossiers archivés :\n" + "\n".join(map(str, result_archive)))
-
+            if result_archive:
+                showinfo("Archivage Terminé", " Liste des dossiers archivés :\n" + "\n".join(map(str, result_archive)))
+        else:
+            showinfo("Attention", "Vous n'avez rien sélectionné")
 
 
 class MenuMain(tk.Menu):
@@ -437,11 +446,11 @@ def get_result_date_list():
     return result_list
 
 
-def xml_pdf_to_tiff(essais_Id, pdf_name):
+def xml_pdf_to_tiff(essais_id, pdf_name):
     xml_encoding = 'ISO-8859-1'
     # On créer le nom du fichier xml et on définit ou l'enregistrer
-    xml_name = "\IC_PL_ESS_RES_" + essais_Id[1] + "_" + essais_Id[2] + "_" + essais_Id[3] + "_" + essais_Id[4] + "_" + \
-               essais_Id[5] + ".xml"
+    xml_name = "\IC_PL_ESS_RES_" + essais_id[1] + "_" + essais_id[2] + "_" + essais_id[3] + "_" + essais_id[4] + "_" + \
+               essais_id[5] + ".xml"
     xml_path_to_save = config.get('Annexe', 'SaveXMLTiffFolder') + xml_name
 
     # On récupere l'emplacement du script pour ensuite chercher les templates
@@ -475,7 +484,7 @@ def xml_pdf_to_tiff(essais_Id, pdf_name):
     # eprouvette_para.insert(0, root_parametre)
 
     # On complete eprouvette
-    root_eprouvette.find("./SeqEssais").text = essais_Id[5]
+    root_eprouvette.find("./SeqEssais").text = essais_id[5]
 
     # insert eprouvette dans essais
     root_essais.find("./__Essai/Eprouvettes").insert(0, root_eprouvette)
@@ -483,19 +492,19 @@ def xml_pdf_to_tiff(essais_Id, pdf_name):
     # On complete essais
     root_essais.find("./__Essai/Source").text = "LABO_IC"
     root_essais.find("./__Essai/TimeStamp").text = datetime.now().strftime('%Y%m%d%H%M%S%f')
-    root_essais.find("./__Essai/NoCommande").text = essais_Id[1]
-    root_essais.find("./__Essai/NoPoste").text = essais_Id[2]
-    root_essais.find("./__Essai/Batch").text = essais_Id[3]
-    root_essais.find("./__Essai/SequenceLoc").text = essais_Id[4]
+    root_essais.find("./__Essai/NoCommande").text = essais_id[1]
+    root_essais.find("./__Essai/NoPoste").text = essais_id[2]
+    root_essais.find("./__Essai/Batch").text = essais_id[3]
+    root_essais.find("./__Essai/SequenceLoc").text = essais_id[4]
 
     et.indent(root_essais)
     et.ElementTree(root_essais).write(xml_path_to_save, pretty_print=True, encoding=xml_encoding)
 
 
-def pdf_to_tiff(path_to_pdf, essais_Id):
+def pdf_to_tiff(path_to_pdf, essais_id):
     """ Conversion des PDF en TIFF"""
-    tiff_name = "\TIFF_" + essais_Id[1] + "_" + essais_Id[2] + "_" + essais_Id[3] + "_" + essais_Id[4] + "_" + \
-                essais_Id[5] + ".tiff"
+    tiff_name = "\TIFF_" + essais_id[1] + "_" + essais_id[2] + "_" + essais_id[3] + "_" + essais_id[4] + "_" + \
+                essais_id[5] + ".tiff"
     path_export_tiff = config.get('Annexe', 'SaveXMLTiffFolder') + tiff_name
     args = [
         "ps2pdf",  # actual value doesn't matter
