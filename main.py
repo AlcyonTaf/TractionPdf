@@ -13,7 +13,7 @@ import shutil
 from datetime import datetime
 # Manipulation de xml
 from lxml import etree as et
-from tkinter import ttk, Text, OptionMenu, StringVar, filedialog as fd
+from tkinter import ttk, Text, OptionMenu, StringVar, filedialog as fd, Listbox
 from tkinter.messagebox import showinfo, showerror
 # Gestion d'un fichier de configuration
 from configparser import ConfigParser
@@ -89,7 +89,7 @@ class TestResultList(tk.Frame):
         self.tree.configure(yscrollcommand=self.scrollbar.set)
 
         # Ajout d'un menu déroulant pour le choix de la date
-        self.result_date_list = self.get_result_date_list()
+        self.result_date_list = get_result_date_list()
         self.folder_list = StringVar()
         self.folder_list.set(self.result_date_list[0])
         self.dropdown_export = OptionMenu(self, self.folder_list, *self.result_date_list, command=self.get_df_csv)
@@ -212,16 +212,6 @@ class TestResultList(tk.Frame):
     #         # show a message
     #         showinfo(title='Information', message=','.join(record))
 
-    def get_result_date_list(self):
-        """ Fonction qui récupère la liste des dossiers export """
-        os.chdir(config.get('ResultsFolder', 'SuiviPath'))
-        result_list = ["En attente export"]
-        list_folder = [name for name in os.listdir(".") if os.path.isdir(name)]
-        # On trie la liste des dossiers en fonction de la date, plus récent en 1er
-        list_folder.sort(key=lambda x: datetime.strptime(x.split(' ')[2], "%d-%m-%y"), reverse=True)
-        result_list.extend(list_folder)
-        return result_list
-
     # def callback_dropdown_export(self, *args):
     #     # TODO : Mettre a jour la treeview avec la liste des fichiers de résultats du dossier sélectionner
     #     # Todo : vérifier si utilisé
@@ -338,11 +328,51 @@ class ArchivePopup(tk.Toplevel):
 
         self.geometry('300x300')
         self.title('Archivage')
-        # add an entry widget
-        self.e1 = tk.Entry(self)
-        self.e1.pack()
+        # self.frame = tk.Frame(self)
+        # self.frame.rowconfigure(0, weight=1)
+        # self.frame.columnconfigure(0, weight=1)
+        # self.frame.grid(row=0, column=0, sticky='nesw')
+        self.rowconfigure(0, weight=1)
+        self.columnconfigure(0, weight=1)
 
-        tk.Button(self, text="close", width="10", command=self.destroy).pack(expand=True)
+        # Ajout d'une listbox
+        self.listbox = tk.Listbox(self, selectmode='multiple', activestyle='none', exportselection=0)
+        self.suivi_folder = get_result_date_list()
+        self.suivi_folder.remove("En attente export")
+        for folder in self.suivi_folder:
+            self.listbox.insert('end', folder)
+
+        self.listbox.grid(row=0, column=0, sticky='wsne')
+
+        # Ajout de la scrollbar
+        self.scrollbar = tk.Scrollbar(self, orient='vertical', command=self.listbox.yview)
+        self.scrollbar.grid(row=0, column=1, sticky='nsew')
+        self.listbox.config(yscrollcommand=self.scrollbar.set)
+
+        # Ajour du bouton archivé
+        self.btn_archive = tk.Button(self, text="Archiver", command=self.archive_suivi)
+        self.btn_archive.grid(row=1, column=0, sticky='s')
+
+    def archive_suivi(self):
+        result_archive = []
+        for i in self.listbox.curselection():
+            src = config.get('ResultsFolder', 'SuiviPath')
+            dst = config.get('ResultsFolder', 'ArchiveSuivi')
+            src_path = os.path.join(src, self.listbox.get(i))
+            print(src_path)
+            if os.path.isdir(src_path):
+                try:
+                    result = shutil.move(src_path, dst)
+                except Exception as e:
+                # Todo : voir pour afficher un message d'erreur a la fin
+                    showerror("Erreur Archivage!", "Une erreur c'est produit lors de l'archivage"
+                                            "SAP : " + str(e))
+                else:
+                    result_archive.append(os.path.basename(os.path.normpath(result)))
+
+        if result_archive:
+            showinfo("Archivage Terminé", " Liste des dossiers archivés :\n" + "\n".join(map(str, result_archive)))
+
 
 
 class MenuMain(tk.Menu):
@@ -396,8 +426,19 @@ class App(tk.Tk):
 
     # afficher les erreurs
     # todo : a réactiver
-    # def report_callback_exception(self, exc, val, tb):
-    #     showerror("Error", message=str(val))
+    def report_callback_exception(self, exc, val, tb):
+        showerror("Error", message=str(val))
+
+
+def get_result_date_list():
+    """ Fonction qui récupère la liste des dossiers export """
+    os.chdir(config.get('ResultsFolder', 'SuiviPath'))
+    result_list = ["En attente export"]
+    list_folder = [name for name in os.listdir(".") if os.path.isdir(name)]
+    # On trie la liste des dossiers en fonction de la date, plus récent en 1er
+    list_folder.sort(key=lambda x: datetime.strptime(x.split(' ')[2], "%d-%m-%y"), reverse=True)
+    result_list.extend(list_folder)
+    return result_list
 
 
 def xml_pdf_to_tiff(essais_Id, pdf_name):
