@@ -125,7 +125,6 @@ class TestResultList(tk.Frame):
 
     def popup_menu_send_pdf(self):
         """ Fonction pour l'envoie des PDF """
-        # TODO : Voir si elle ne peut pas etre static
         result_sap = []
         file_path = fd.askopenfilename(title="Choix du PDF a transmettre a SAP", filetypes=[('PDF', '*.pdf')])
         if file_path and len(self.tree.selection()) == 1:
@@ -139,9 +138,6 @@ class TestResultList(tk.Frame):
             except Exception as value:
                 showerror("Erreur Annexe!", "Une erreur c'est produit lors de la génération : " + str(value))
             else:
-                # Si ok on copie les fichier
-                # Todo : Faire copie des fichiers dans répertoire d'envoie SAP puis on archive
-                # Todo afficher message pour dire ok
                 # on va copier, en faisant attention au droit les fichiers généré dans le dossier d'échange avec SAP
                 # Puis on archive les originaux en les déplaçant en ajoutant la date dans le nom du dossier
                 src_folder = config.get('Annexe', 'SaveXMLTiffFolder')
@@ -157,7 +153,6 @@ class TestResultList(tk.Frame):
                         try:
                             result = shutil.copyfile(file, dst)
                         except Exception as e:
-                            # Todo : voir pour afficher un message d'erreur a la fin
                             showerror("Erreur Annexe!", "Une erreur c'est produit lors de la copie dans le dossier "
                                                         "SAP : " + str(e))
                         else:
@@ -170,7 +165,6 @@ class TestResultList(tk.Frame):
             showinfo("Annexe transmise", " Liste des fichiers transmis :\n" + "\n".join(map(str, result_sap)))
 
     def delete_file(self):
-        # Todo : faire suppression fichier csv
         if len(self.tree.selection()) == 1:
             item = self.tree.selection()[0]
             idx = self.tree.index(item)
@@ -193,7 +187,6 @@ class TestResultList(tk.Frame):
                 self.popup_menu.grab_release()
 
     def on_select_treeview_item(self, event):
-        # Todo : Prévoir le cas ou la treeview est vide
         if len(self.tree.selection()) > 0:
             item = self.tree.selection()[0]
             idx = self.tree.index(item)
@@ -430,7 +423,6 @@ class App(tk.Tk):
             self.archive_popup = None
 
     # afficher les erreurs
-    # todo : a réactiver
     def report_callback_exception(self, exc, val, tb):
         showerror("Error", message=str(val))
 
