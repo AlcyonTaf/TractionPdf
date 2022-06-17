@@ -10,6 +10,9 @@ import pandas as pd
 import ghostscript
 # Pour copier/déplacer fichier
 import shutil
+# Pour executer les script PS
+from subprocess import Popen, PIPE, STDOUT
+from threading import Thread
 from datetime import datetime
 # Manipulation de xml
 from lxml import etree as et
@@ -141,7 +144,7 @@ class TestResultList(tk.Frame):
                 # on va copier, en faisant attention au droit les fichiers généré dans le dossier d'échange avec SAP
                 # Puis on archive les originaux en les déplaçant en ajoutant la date dans le nom du dossier
                 src_folder = config.get('Annexe', 'SaveXMLTiffFolder')
-                dst_folder = config.get('SAP', 'AICFolder')
+                dst_folder = config.get('SAP', 'ToSAPFolder')
                 dst_archive_folder = config.get('Annexe', 'ArchiveFolderXmlTiff')
                 files = [name for name in glob.glob(src_folder + "/*")]
                 print(files)
@@ -373,6 +376,91 @@ class ArchivePopup(tk.Toplevel):
             showinfo("Attention", "Vous n'avez rien sélectionné")
 
 
+class RunPSScript(tk.Toplevel):
+    def __init__(self):
+        tk.Toplevel.__init__(self)
+        """Start subprocess, make GUI widgets."""
+        # self.root = root
+
+        script_path = config.get('PS', 'ScriptPath')
+        cmd = ["powershell.exe", script_path]
+        # start subprocess
+        self.proc = Popen(cmd, stdout=PIPE, stderr=STDOUT)
+
+        self.stopping = []
+
+        # stop subprocess using a button
+        self.btn_stop = tk.Button(self, text="Stop subprocess", command=self.stop)
+        self.btn_stop.pack()
+
+        self.label = tk.Text(self)  # put subprocess output here
+        self.label.pack()
+
+        # Create a buffer for the stdout
+        self.stdout_data = ""
+        # Create a new thread that will read stdout and write the data to
+        # `self.stdout_buffer`
+        thread = Thread(target=self.read_output, args=(self.proc.stdout,))
+        thread.start()
+
+        # A tkinter loop that will show `self.stdout_data` on the screen
+        self.show_stdout()
+
+    def read_output(self, pipe):
+        """Read subprocess' output and store it in `self.stdout_data`."""
+        while True:
+            data = os.read(pipe.fileno(), 1 << 20)
+            # Windows uses: "\r\n" instead of "\n" for new lines.
+            data = data.replace(b"\r\n", b"\n")
+            if data:
+                print("got: %r", data)
+                self.stdout_data += data.decode()
+            else:  # clean up
+                print("eof")
+                # Todo : Ne pas fermer la fenetre auto
+                self.after(5000, self.stop)
+                print('stop')  # stop in 5 seconds
+                return None
+
+    def show_stdout(self):
+        # Todo : Voir pour arreter la boucle si eof
+        # avant faire test avec script peut etre
+        """Read `self.stdout_data` and put the data in the GUI."""
+        self.label.insert('end', self.stdout_data)
+        self.after(100, self.show_stdout)
+
+    def stop(self):
+        """Stop subprocess and quit GUI."""
+        if self.stopping:
+            print(" pas stopping")
+            return  # avoid killing subprocess more than once
+        self.stopping.append(True)
+
+        print("stopping")
+        self.proc.terminate()  # tell the subprocess to exit
+
+        # kill subprocess if it hasn't exited after a countdown
+        def kill_after(countdown):
+            if self.proc.poll() is None:  # subprocess hasn't exited yet
+                countdown -= 1
+                if countdown < 0:  # do kill
+                    print("killing")
+                    self.proc.kill()  # more likely to kill on *nix
+                else:
+                    self.after(1000, kill_after, countdown)
+                    return  # continue countdown in a second
+
+            self.proc.stdout.close()  # close fd
+            self.proc.wait()  # wait for the subprocess' exit
+            print(app.run_ps_popup)
+            app.run_ps_popup = None
+            print("la")
+            print(app.run_ps_popup)
+            self.destroy()  # exit GUI
+
+        kill_after(countdown=5)
+
+
 class MenuMain(tk.Menu):
     """ Class contenant le menu"""
 
@@ -381,8 +469,10 @@ class MenuMain(tk.Menu):
         self.parent = parent
         self.file_menu = tk.Menu(self, tearoff=False)
         self.add_cascade(label="Fichier", underline=0, menu=self.file_menu)
-        self.file_menu.add_command(label="Archivage", underline=1, command=self.parent.archive_popup_window)
-        self.file_menu.add_command(label="Exit", underline=2, command=self.quit)
+        self.file_menu.add_command(label="Transmettre les résultats vers SAP", underline=1,
+                                   command=self.parent.run_ps_popup_window)
+        self.file_menu.add_command(label="Archivage", underline=2, command=self.parent.archive_popup_window)
+        self.file_menu.add_command(label="Exit", underline=3, command=self.quit)
 
 
 class App(tk.Tk):
@@ -395,6 +485,7 @@ class App(tk.Tk):
         self.menubar = MenuMain(self)
         self.config(menu=self.menubar)
         self.archive_popup = None
+        self.run_ps_popup = None
 
         self.title("Gestion de l'export des résultats de traction")
         # self.geometry('640x480')
@@ -409,6 +500,7 @@ class App(tk.Tk):
         self.main_application.grid(row=0, column=0, sticky='nswe')
         # OtherFrame(self).pack(side="bottom")
 
+
     # Pour créer l'instance de la class ArchivePopup toplevel
     def archive_popup_window(self):
         if self.archive_popup is None:
@@ -422,9 +514,33 @@ class App(tk.Tk):
         if event.widget == self.archive_popup:
             self.archive_popup = None
 
+    # Pour créer l'instance de la class RunPSSCRIPT toplevel
+    def run_ps_popup_window(self):
+        if self.run_ps_popup is None:
+            self.run_ps_popup = RunPSScript()
+        else:
+            self.run_ps_popup.deiconify()
+        self.run_ps_popup.bind("<Destroy>", self._run_ps_popup_window_destroyed)
+        self.run_ps_popup.protocol("WM_DELETE_WINDOW", self.run_ps_popup.stop)
+
+    # Permet de remettre a None run_ps_popup et de faire une action a la fermeture de la fenêtre
+    def _run_ps_popup_window_destroyed(self, event):
+        if event.widget == self.run_ps_popup:
+            print("ici")
+            self.run_ps_popup = None
+
     # afficher les erreurs
     def report_callback_exception(self, exc, val, tb):
         showerror("Error", message=str(val))
+
+
+# def run_ps_script():
+#     script_path = config.get('PS', 'ScriptPath')
+#
+#     completed = subprocess.run(["powershell", script_path],
+#                                capture_output=True)
+#     print(completed)
+#     return completed
 
 
 def get_result_date_list():
@@ -439,19 +555,22 @@ def get_result_date_list():
 
 
 def xml_pdf_to_tiff(essais_id, pdf_name):
+    """" Fonction qui permet de générer le couple XML/TIFF pour les annexes SAP
+        En para :
+            essais_id : tuple contenant l'ID sap de l'essai
+            pdf_name : nom du pdf a transformer
+    """
     xml_encoding = 'ISO-8859-1'
     # On créer le nom du fichier xml et on définit ou l'enregistrer
     xml_name = "\IC_PL_ESS_RES_" + essais_id[1] + "_" + essais_id[2] + "_" + essais_id[3] + "_" + essais_id[4] + "_" + \
                essais_id[5] + ".xml"
     xml_path_to_save = config.get('Annexe', 'SaveXMLTiffFolder') + xml_name
 
-    # On récupere l'emplacement du script pour ensuite chercher les templates
-    script_path = os.path.realpath(
-        os.path.join(os.getcwd(), os.path.dirname(__file__)))
+    xml_template_folder = config.get('Annexe', 'XMLTemplateFolder')
 
-    path_to_xml_essais = os.path.join(script_path, 'Xml Template', 'xml_template_essais.xml')
-    path_to_xml_eprouvette = os.path.join(script_path, 'Xml Template', 'xml_template_eprouvette.xml')
-    path_to_xml_parametre = os.path.join(script_path, 'Xml Template', 'xml_template_parametre.xml')
+    path_to_xml_essais = os.path.join(xml_template_folder, 'xml_template_essais.xml')
+    path_to_xml_eprouvette = os.path.join(xml_template_folder, 'xml_template_eprouvette.xml')
+    path_to_xml_parametre = os.path.join(xml_template_folder, 'xml_template_parametre.xml')
     # import des templates
     # Essais
     root_essais = et.parse(path_to_xml_essais).getroot()
@@ -522,6 +641,8 @@ if __name__ == "__main__":
         config.read('config.ini')
         app = App()
         # MainApplication(root).pack(side="top", fill="both", expand=True)
+        # Todo : il va falloir prévoir de couper le subprocess si on ferme la fenetre
+        #app.protocol("WM_DELETE_WINDOW", app.run_ps_popup.stop)
         app.mainloop()
     else:
         showerror("Error", message="Le fichier config.ini n'est pas présent.")
