@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+#import chardet
+
 # Interface graphique
 import tkinter as tk
 # Utilitaire fichier/dossier
@@ -380,31 +383,50 @@ class RunPSScript(tk.Toplevel):
     def __init__(self):
         tk.Toplevel.__init__(self)
         """Start subprocess, make GUI widgets."""
-        # self.root = root
+        # Taille de la fenêtre
+        self.geometry('1300x500')
+        self.title('Exportation des résultats vers SAP')
 
+        # Script PS de conversion
+        # Todo : Peut etre l'intégré directement ici en python?
         script_path = config.get('PS', 'ScriptPath')
         cmd = ["powershell.exe", script_path]
+
         # start subprocess
         self.proc = Popen(cmd, stdout=PIPE, stderr=STDOUT)
 
         self.stopping = []
 
-        # stop subprocess using a button
-        self.btn_stop = tk.Button(self, text="Stop subprocess", command=self.stop)
-        self.btn_stop.pack()
+        # Grid config
+        self.rowconfigure(1, weight=1)
+        self.columnconfigure(0, weight=1)
 
-        self.label = tk.Text(self)  # put subprocess output here
-        self.label.pack()
+        # stop subprocess using a button
+        self.btn_stop = tk.Button(self, text="Fermer", command=self.stop)
+        self.btn_stop.grid(row=0, column=0)
+
+        # Ajout d'un label pour informer si erreur
+        self.string_var = StringVar()
+        self.error_lbl = tk.Label(self, textvariable=self.string_var)
+        self.error_lbl.grid(row=0, column=1)
+
+        # Widget Text pour afficher la sortie du script PS
+        self.text = tk.Text(self)  # put subprocess output here
+        self.text.grid(row=1, column=0, columnspan=2, sticky='nesw')
+
+        # Ajout de la scrollbar
+        self.scrollbar = tk.Scrollbar(self, orient='vertical', command=self.text.yview)
+        self.scrollbar.grid(row=1, column=2, sticky='nsew')
+        self.text.config(yscrollcommand=self.scrollbar.set)
 
         # Create a buffer for the stdout
         self.stdout_data = ""
         # Create a new thread that will read stdout and write the data to
-        # `self.stdout_buffer`
         thread = Thread(target=self.read_output, args=(self.proc.stdout,))
         thread.start()
 
         # A tkinter loop that will show `self.stdout_data` on the screen
-        self.show_stdout()
+        #self.show_stdout()
 
     def read_output(self, pipe):
         """Read subprocess' output and store it in `self.stdout_data`."""
@@ -412,31 +434,50 @@ class RunPSScript(tk.Toplevel):
             data = os.read(pipe.fileno(), 1 << 20)
             # Windows uses: "\r\n" instead of "\n" for new lines.
             data = data.replace(b"\r\n", b"\n")
+
             if data:
-                print("got: %r", data)
-                self.stdout_data += data.decode()
+                #print("got: %r", data)
+                self.stdout_data = data.decode(errors='ignore')
+                #test
+                #self.text.insert('end', data.decode(encoding='ascii', errors='ignore'))
+                self.show_stdout()
             else:  # clean up
-                print("eof")
+                #print("eof")
                 # Todo : Ne pas fermer la fenetre auto
-                self.after(5000, self.stop)
-                print('stop')  # stop in 5 seconds
+                #self.after(5000, self.stop)
+                #print('stop')  # stop in 5 seconds
                 return None
 
     def show_stdout(self):
-        # Todo : Voir pour arreter la boucle si eof
-        # avant faire test avec script peut etre
         """Read `self.stdout_data` and put the data in the GUI."""
-        self.label.insert('end', self.stdout_data)
-        self.after(100, self.show_stdout)
+        self.text.insert('end', self.stdout_data)
+
+        # Essai pour afficher en rouge le tag ***ERREUR***
+        word_to_find = '***ERREUR***'
+        idx = '1.0'
+        while idx:
+            idx = self.text.search(word_to_find, idx, nocase=True, stopindex='end')
+            if idx:
+                lastidx = '%s+%dc' % (idx, len(word_to_find))
+                self.text.tag_add('red', idx, lastidx)
+                idx = lastidx
+                #On met a jour le label erreur
+                self.string_var.set('Erreur trouvé!!')
+                self.error_lbl.config(bg='red')
+
+        self.text.tag_configure('red', foreground='red')
+
+      #  if not self.stop_loop:
+      #      self.after(100, self.show_stdout)
 
     def stop(self):
         """Stop subprocess and quit GUI."""
         if self.stopping:
-            print(" pas stopping")
+            #print(" pas stopping")
             return  # avoid killing subprocess more than once
         self.stopping.append(True)
 
-        print("stopping")
+        #print("stopping")
         self.proc.terminate()  # tell the subprocess to exit
 
         # kill subprocess if it hasn't exited after a countdown
@@ -444,7 +485,7 @@ class RunPSScript(tk.Toplevel):
             if self.proc.poll() is None:  # subprocess hasn't exited yet
                 countdown -= 1
                 if countdown < 0:  # do kill
-                    print("killing")
+                    #print("killing")
                     self.proc.kill()  # more likely to kill on *nix
                 else:
                     self.after(1000, kill_after, countdown)
@@ -452,10 +493,7 @@ class RunPSScript(tk.Toplevel):
 
             self.proc.stdout.close()  # close fd
             self.proc.wait()  # wait for the subprocess' exit
-            print(app.run_ps_popup)
             app.run_ps_popup = None
-            print("la")
-            print(app.run_ps_popup)
             self.destroy()  # exit GUI
 
         kill_after(countdown=5)
@@ -530,8 +568,9 @@ class App(tk.Tk):
             self.run_ps_popup = None
 
     # afficher les erreurs
-    def report_callback_exception(self, exc, val, tb):
-        showerror("Error", message=str(val))
+    # Todo : a reactiver
+    # def report_callback_exception(self, exc, val, tb):
+    #    showerror("Error", message=str(val))
 
 
 # def run_ps_script():
