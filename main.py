@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-#import chardet
 
 # Interface graphique
 import tkinter as tk
@@ -175,10 +174,13 @@ class TestResultList(tk.Frame):
             item = self.tree.selection()[0]
             idx = self.tree.index(item)
             file = str(self.frame.iloc[idx, -2])
-            print(str(self.frame.iloc[idx, -2]))
-            if os.path.exists(file):
-                os.remove(file)
-                self.get_df_csv('En attente export')
+            res = tk.messagebox.askquestion("Confirmation de suppression",
+                                            "Etes vous sur de vouloir supprimer le fichier " + file)
+            if res == 'yes':
+                # print(str(self.frame.iloc[idx, -2]))
+                if os.path.exists(file):
+                    os.remove(file)
+                    self.get_df_csv('En attente export')
 
     def show_popup_menu(self, event):
         # Todo : voir pour ne pas afficher annexe si essai faux (red)
@@ -426,7 +428,7 @@ class RunPSScript(tk.Toplevel):
         thread.start()
 
         # A tkinter loop that will show `self.stdout_data` on the screen
-        #self.show_stdout()
+        # self.show_stdout()
 
     def read_output(self, pipe):
         """Read subprocess' output and store it in `self.stdout_data`."""
@@ -436,16 +438,16 @@ class RunPSScript(tk.Toplevel):
             data = data.replace(b"\r\n", b"\n")
 
             if data:
-                #print("got: %r", data)
+                # print("got: %r", data)
                 self.stdout_data = data.decode(errors='ignore')
-                #test
-                #self.text.insert('end', data.decode(encoding='ascii', errors='ignore'))
+                # test
+                # self.text.insert('end', data.decode(encoding='ascii', errors='ignore'))
                 self.show_stdout()
             else:  # clean up
-                #print("eof")
+                # print("eof")
                 # Todo : Ne pas fermer la fenetre auto
-                #self.after(5000, self.stop)
-                #print('stop')  # stop in 5 seconds
+                # self.after(5000, self.stop)
+                # print('stop')  # stop in 5 seconds
                 return None
 
     def show_stdout(self):
@@ -461,23 +463,23 @@ class RunPSScript(tk.Toplevel):
                 lastidx = '%s+%dc' % (idx, len(word_to_find))
                 self.text.tag_add('red', idx, lastidx)
                 idx = lastidx
-                #On met a jour le label erreur
+                # On met a jour le label erreur
                 self.string_var.set('Erreur trouvé!!')
                 self.error_lbl.config(bg='red')
 
         self.text.tag_configure('red', foreground='red')
 
-      #  if not self.stop_loop:
-      #      self.after(100, self.show_stdout)
+    #  if not self.stop_loop:
+    #      self.after(100, self.show_stdout)
 
     def stop(self):
         """Stop subprocess and quit GUI."""
         if self.stopping:
-            #print(" pas stopping")
+            # print(" pas stopping")
             return  # avoid killing subprocess more than once
         self.stopping.append(True)
 
-        #print("stopping")
+        # print("stopping")
         self.proc.terminate()  # tell the subprocess to exit
 
         # kill subprocess if it hasn't exited after a countdown
@@ -485,7 +487,7 @@ class RunPSScript(tk.Toplevel):
             if self.proc.poll() is None:  # subprocess hasn't exited yet
                 countdown -= 1
                 if countdown < 0:  # do kill
-                    #print("killing")
+                    # print("killing")
                     self.proc.kill()  # more likely to kill on *nix
                 else:
                     self.after(1000, kill_after, countdown)
@@ -538,7 +540,6 @@ class App(tk.Tk):
         self.main_application.grid(row=0, column=0, sticky='nswe')
         # OtherFrame(self).pack(side="bottom")
 
-
     # Pour créer l'instance de la class ArchivePopup toplevel
     def archive_popup_window(self):
         if self.archive_popup is None:
@@ -569,8 +570,8 @@ class App(tk.Tk):
 
     # afficher les erreurs
     # Todo : a reactiver
-    # def report_callback_exception(self, exc, val, tb):
-    #    showerror("Error", message=str(val))
+    def report_callback_exception(self, exc, val, tb):
+        showerror("Error", message=str(val))
 
 
 # def run_ps_script():
@@ -680,8 +681,6 @@ if __name__ == "__main__":
         config.read('config.ini')
         app = App()
         # MainApplication(root).pack(side="top", fill="both", expand=True)
-        # Todo : il va falloir prévoir de couper le subprocess si on ferme la fenetre
-        #app.protocol("WM_DELETE_WINDOW", app.run_ps_popup.stop)
         app.mainloop()
     else:
         showerror("Error", message="Le fichier config.ini n'est pas présent.")
