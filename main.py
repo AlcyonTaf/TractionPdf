@@ -9,7 +9,12 @@ import glob
 # Manipulation de données
 import pandas as pd
 # Pour générer un Tiff à partir d'un PDF
-import ghostscript
+magick_home= ".\\TestDll\\"
+print( os.pathsep + magick_home + os.sep)
+os.environ["PATH"] += os.pathsep + magick_home + os.sep
+os.environ["MAGICK_HOME"] = magick_home
+os.environ["MAGICK_CODER_MODULE_PATH"] = magick_home + os.sep + "modules" + os.sep + "coders"
+from wand.image import Image
 # Pour copier/déplacer fichier
 import shutil
 # Pour executer les script PS
@@ -654,20 +659,30 @@ def xml_pdf_to_tiff(essais_id, pdf_name):
 
 def pdf_to_tiff(path_to_pdf, essais_id):
     """ Conversion des PDF en TIFF"""
-    tiff_name = "\TIFF_" + essais_id[1] + "_" + essais_id[2] + "_" + essais_id[3] + "_" + essais_id[4] + "_" + \
-                essais_id[5] + ".tiff"
+    tiff_name = "\TIFF_" + str(essais_id[1]) + "_" + str(essais_id[2]) + "_" + str(essais_id[3]) + "_" + str(essais_id[4]) + "_" + \
+                str(essais_id[5]) + ".tiff"
     path_export_tiff = config.get('Annexe', 'SaveXMLTiffFolder') + tiff_name
-    args = [
-        "ps2pdf",  # actual value doesn't matter
-        "-dNOPAUSE", "-dBATCH", "-dSAFER",
-        "-r" + config.get('TIFF', 'Resolution'),
-        "-sDEVICE=" + config.get('TIFF', 'Device'),
-        "-sCompression=" + config.get('TIFF', 'Compression'),
-        "-sOutputFile=" + path_export_tiff,
-        path_to_pdf
-    ]
 
-    ghostscript.Ghostscript(*args)
+    tiff = Image(filename=path_to_pdf)
+    tiff.format = 'tiff'
+    tiff.options['tiff:rows-per-strip'] = '4'
+    tiff.type = 'palette'
+    tiff.compression = 'rle'
+    tiff.resolution = [150, 150]
+
+    tiff.save(filename=path_export_tiff)
+
+    # args = [
+    #     "ps2pdf",  # actual value doesn't matter
+    #     "-dNOPAUSE", "-dBATCH", "-dSAFER",
+    #     "-r" + config.get('TIFF', 'Resolution'),
+    #     "-sDEVICE=" + config.get('TIFF', 'Device'),
+    #     "-sCompression=" + config.get('TIFF', 'Compression'),
+    #     "-sOutputFile=" + path_export_tiff,
+    #     path_to_pdf
+    # ]
+    #
+    # ghostscript.Ghostscript(*args)
 
     return tiff_name
 
