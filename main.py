@@ -8,15 +8,17 @@ import os
 import glob
 # Manipulation de données
 import pandas as pd
+# Pour copier/déplacer fichier
+import shutil
+
 # Pour générer un Tiff à partir d'un PDF
-magick_home= ".\\TestDll\\"
-print( os.pathsep + magick_home + os.sep)
+magick_home = ".\\ImageMagickDLL\\"
 os.environ["PATH"] += os.pathsep + magick_home + os.sep
 os.environ["MAGICK_HOME"] = magick_home
 os.environ["MAGICK_CODER_MODULE_PATH"] = magick_home + os.sep + "modules" + os.sep + "coders"
 from wand.image import Image
-# Pour copier/déplacer fichier
-import shutil
+from wand.color import Color
+
 # Pour executer les script PS
 from subprocess import Popen, PIPE, STDOUT
 from threading import Thread
@@ -261,7 +263,7 @@ class TestResultList(tk.Frame):
                 else:
                     encode = "ascii"
                 # création du dataframe
-                df = pd.read_csv(filename, index_col=None, header=None, sep=';', encoding=encode,
+                df = pd.read_csv(filename, index_col=None, header=None, sep=';', encoding=encode, keep_default_na=False,
                                  names=["Commande", "Poste", "UM", "Sequence Essai", "Sequence Loc",
                                         "Nbr Epr", "Machine", "Date", "Opérateur", "Rp0.2", "ReH", "Rm", "ReL", "Rp0.5",
                                         "Rp1",
@@ -273,6 +275,9 @@ class TestResultList(tk.Frame):
                 li.append(df)
 
             self.frame = pd.concat(li, axis=0, ignore_index=True)
+
+            self.frame.round()
+
             # Détection des doublons
             self.frame['double'] = self.frame.duplicated(keep=False,
                                                          subset=["Commande", "Poste", "UM", "Sequence Essai",
@@ -659,30 +664,27 @@ def xml_pdf_to_tiff(essais_id, pdf_name):
 
 def pdf_to_tiff(path_to_pdf, essais_id):
     """ Conversion des PDF en TIFF"""
-    tiff_name = "\TIFF_" + str(essais_id[1]) + "_" + str(essais_id[2]) + "_" + str(essais_id[3]) + "_" + str(essais_id[4]) + "_" + \
-                str(essais_id[5]) + ".tiff"
+    tiff_name = "\TIFF_" + essais_id[1] + "_" + essais_id[2] + "_" + essais_id[3] + "_" + essais_id[4] + "_" + \
+                essais_id[5] + ".tif"
+    # Il faut se remettre dans le dossier du script sinon Wand ne fonctionne pas
+    script_path = os.path.realpath(
+        os.path.join(os.getcwd(), os.path.dirname(__file__)))
+    os.chdir(script_path)
+
     path_export_tiff = config.get('Annexe', 'SaveXMLTiffFolder') + tiff_name
 
-    tiff = Image(filename=path_to_pdf)
+    res = config.get('TIFF', 'Resolution')
+
+    tiff = Image(filename=os.path.abspath(path_to_pdf), resolution=200)
     tiff.format = 'tiff'
     tiff.options['tiff:rows-per-strip'] = '4'
-    tiff.type = 'palette'
-    tiff.compression = 'rle'
-    tiff.resolution = [150, 150]
+    tiff.background_color = Color("white")
+    tiff.alpha_channel = 'remove'
+    tiff.type = config.get('TIFF', 'Type')
+    tiff.compression = config.get('TIFF', 'Compression')
+    tiff.resolution = [int(res), int(res)]
 
-    tiff.save(filename=path_export_tiff)
-
-    # args = [
-    #     "ps2pdf",  # actual value doesn't matter
-    #     "-dNOPAUSE", "-dBATCH", "-dSAFER",
-    #     "-r" + config.get('TIFF', 'Resolution'),
-    #     "-sDEVICE=" + config.get('TIFF', 'Device'),
-    #     "-sCompression=" + config.get('TIFF', 'Compression'),
-    #     "-sOutputFile=" + path_export_tiff,
-    #     path_to_pdf
-    # ]
-    #
-    # ghostscript.Ghostscript(*args)
+    tiff.save(filename=os.path.abspath(path_export_tiff))
 
     return tiff_name
 
@@ -699,4 +701,4 @@ if __name__ == "__main__":
         app.mainloop()
     else:
         showerror("Error", message="Le fichier config.ini n'est pas présent.")
-        quit()
+        #quit()
