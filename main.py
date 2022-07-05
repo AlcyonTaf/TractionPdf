@@ -13,7 +13,9 @@ import shutil
 
 # Pour générer un Tiff à partir d'un PDF
 magick_home = ".\\ImageMagickDLL\\"
+gs_path = ".\\gs9.56.1\\bin\\"
 os.environ["PATH"] += os.pathsep + magick_home + os.sep
+os.environ["PATH"] += os.pathsep + gs_path + os.sep
 os.environ["MAGICK_HOME"] = magick_home
 os.environ["MAGICK_CODER_MODULE_PATH"] = magick_home + os.sep + "modules" + os.sep + "coders"
 from wand.image import Image
