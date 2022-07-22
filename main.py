@@ -235,7 +235,8 @@ class TestResultList(tk.Frame):
 
     def get_df_csv(self, csv_folder_name):
         """ Fonction qui récupére les données des CSV et remplie la treeview
-            On en profite également pour completer le menu popup"""
+            On en profite également pour completer le menu popup
+            On met également en couleur les essais avec problemes"""
 
         # Définition du menu popup a chaque fois qu'on sélectionne un item de la liste
         self.popup_menu.delete(0, 'end')
@@ -284,6 +285,10 @@ class TestResultList(tk.Frame):
             self.frame['double'] = self.frame.duplicated(keep=False,
                                                          subset=["Commande", "Poste", "UM", "Sequence Essai",
                                                                  "Sequence Loc"])
+            # Todo : Rajouter ici la détection des TCZ
+            # Mettre couleur si ok, et autre couleur si pas OK
+
+
             # print(type(frame))
             # On vide la treeview
             for item in self.tree.get_children():
@@ -310,9 +315,9 @@ class TestResultList(tk.Frame):
                     row_color = ""
 
                 self.tree.insert('', 'end', values=tout, tags=row_color)
-                self.tree.tag_configure("red", background="red")
-                self.tree.tag_configure("blue", background="blue")
-                self.tree.tag_configure("orange", background="orange")
+                self.tree.tag_configure("red", background="red", foreground="white")
+                self.tree.tag_configure("blue", background="blue", foreground="white")
+                self.tree.tag_configure("orange", background="orange", foreground="white")
         else:
             # On vide la treeview
             for item in self.tree.get_children():
